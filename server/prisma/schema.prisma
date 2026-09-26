@@ -15,6 +15,7 @@ model Cake {
   price       Float
   emoji       String  @default("🎂")
   orders      Order[]
+  recipe      Recipe?
 }
 
 // A single order — either references a premade Cake, or is fully custom
@@ -28,10 +29,6 @@ model Order {
   cakeId       Int?
   cake         Cake?    @relation(fields: [cakeId], references: [id])
 
-  flavor       String?
-  toppings     String?  // JSON-stringified string[]
-  sizeKg       Float?
-  message      String?  // inscription written on the cake
   notes        String?  // free-text notes for the baker
 
   pickupDate   DateTime
@@ -62,4 +59,54 @@ model Session {
 
   @@index([userId])
 }
+
+model Ingredient {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  unit        String   // g, kg, ml, l, pcs
+  description String?
+
+  inventory   Inventory?
+  recipes     RecipeIngredient[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Inventory {
+  id                Int      @id @default(autoincrement())
+  ingredientId      Int      @unique
+  quantity          Float    @default(0)
+  lowStockThreshold Float    @default(0)
+
+  ingredient        Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  updatedAt         DateTime @updatedAt
+}
+
+model Recipe {
+  id          Int      @id @default(autoincrement())
+  cakeId      Int      @unique
+  name        String
+  description String?
+
+  cake        Cake              @relation(fields: [cakeId], references: [id], onDelete: Cascade)
+  ingredients RecipeIngredient[]
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model RecipeIngredient {
+  id           Int   @id @default(autoincrement())
+  recipeId     Int
+  ingredientId Int
+  quantity     Float
+
+  recipe       Recipe     @relation(fields: [recipeId], references: [id], onDelete: Cascade)
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+
+  @@unique([recipeId, ingredientId])
+}
+
 

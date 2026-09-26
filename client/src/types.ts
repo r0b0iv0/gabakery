@@ -6,21 +6,11 @@ export interface Cake {
   emoji: string;
 }
 
-export interface OptionsResponse {
-  flavors: string[];
-  toppings: string[];
-  sizes: number[];
-}
 
 export interface OrderPayload {
   customerName: string;
   phone: string;
-  isCustom: boolean;
   cakeId?: number;
-  flavor?: string;
-  toppings?: string[];
-  sizeKg?: number;
-  message?: string;
   notes?: string;
   pickupDate: string; // YYYY-MM-DD
 }
@@ -31,10 +21,6 @@ export interface Order {
   phone: string;
   isCustom: boolean;
   cake?: Cake | null;
-  flavor?: string | null;
-  toppings?: string | null; // JSON-stringified string[]
-  sizeKg?: number | null;
-  message?: string | null;
   notes?: string | null;
   pickupDate: string;
   status: 'pending' | 'in_progress' | 'ready' | 'picked_up';

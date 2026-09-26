@@ -1,4 +1,4 @@
-import type { Cake, OptionsResponse, Order, OrderPayload, User } from './types';
+import type { Cake, Order, OrderPayload, User } from './types';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -49,7 +49,6 @@ export const api = {
 
 
   getCakes: () => request<Cake[]>('/cakes'),
-  getOptions: () => request<OptionsResponse>('/options'),
   createOrder: (payload: OrderPayload) =>
     request<Order>('/orders', { method: 'POST', body: JSON.stringify(payload) }),
   getOrdersByDate: (date: string) => request<Order[]>(`/orders?date=${date}`),

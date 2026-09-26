@@ -17,14 +17,6 @@ app.use("/api/auth", authRouter);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 
-// Static options for building a custom cake.
-// In a bigger version these would live in the DB too — kept static here
-// since the goal right now is just validating the flow.
-const OPTIONS = {
-  flavors: ['Шоколад', 'Ванилия', 'Лимон', 'Червено кадифе', 'Карамел', 'Плодове'],
-  toppings: ['Пресни ягоди', 'Шоколадови стърготини', 'Бита сметана', 'Карамелов сос', 'Ядки', 'Захарни перли'],
-  sizes: [1, 1.5, 2, 3],
-};
 
 const VALID_STATUSES = ['pending', 'in_progress', 'ready', 'picked_up'];
 
@@ -35,9 +27,6 @@ app.get('/api/cakes', async (_req, res) => {
   res.json(cakes);
 });
 
-app.get('/api/options', (_req, res) => {
-  res.json(OPTIONS);
-});
 
 // ---- Orders ----
 
@@ -47,10 +36,6 @@ app.post('/api/orders', async (req, res) => {
     phone,
     isCustom,
     cakeId,
-    flavor,
-    toppings,
-    sizeKg,
-    message,
     notes,
     pickupDate,
   } = req.body ?? {};
@@ -59,12 +44,8 @@ app.post('/api/orders', async (req, res) => {
     return res.status(400).json({ error: 'Липсват задължителни полета (име, телефон, дата).' });
   }
 
-  if (!isCustom && !cakeId) {
-    return res.status(400).json({ error: 'Изберете торта от каталога или направете custom торта.' });
-  }
-
-  if (isCustom && !flavor) {
-    return res.status(400).json({ error: 'Изберете вкус за вашата custom торта.' });
+  if (!cakeId) {
+    return res.status(400).json({ error: 'Изберете торта от каталога' });
   }
 
   const order = await prisma.order.create({
@@ -72,11 +53,7 @@ app.post('/api/orders', async (req, res) => {
       customerName,
       phone,
       isCustom: Boolean(isCustom),
-      cakeId: isCustom ? null : Number(cakeId),
-      flavor: isCustom ? flavor : null,
-      toppings: isCustom && Array.isArray(toppings) ? JSON.stringify(toppings) : null,
-      sizeKg: isCustom && sizeKg ? Number(sizeKg) : null,
-      message: isCustom ? message ?? null : null,
+      cakeId: Number(cakeId),
       notes: notes ?? null,
       pickupDate: new Date(pickupDate),
     },
