@@ -34,7 +34,6 @@ app.post('/api/orders', async (req, res) => {
   const {
     customerName,
     phone,
-    isCustom,
     cakeId,
     notes,
     pickupDate,
@@ -52,7 +51,6 @@ app.post('/api/orders', async (req, res) => {
     data: {
       customerName,
       phone,
-      isCustom: Boolean(isCustom),
       cakeId: Number(cakeId),
       notes: notes ?? null,
       pickupDate: new Date(pickupDate),
