@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// A premade cake from the catalog
+model Cake {
+  id          Int     @id @default(autoincrement())
+  name        String
+  description String
+  price       Float
+  emoji       String  @default("🎂")
+  orders      Order[]
+}
+
+// A single order — either references a premade Cake, or is fully custom
+// (flavor/toppings/size filled in directly on the order).
+model Order {
+  id           Int      @id @default(autoincrement())
+  customerName String
+  phone        String
+  isCustom     Boolean  @default(false)
+
+  cakeId       Int?
+  cake         Cake?    @relation(fields: [cakeId], references: [id])
+
+  flavor       String?
+  toppings     String?  // JSON-stringified string[]
+  sizeKg       Float?
+  message      String?  // inscription written on the cake
+  notes        String?  // free-text notes for the baker
+
+  pickupDate   DateTime
+  status       String   @default("pending") // pending | in_progress | ready | picked_up
+
+  createdAt    DateTime @default(now())
+
+  createdById  Int?
+  createdBy   User? @relation( "OrderCreatedBy", fields: [createdById], references: [id])
+}
+
+model User {
+  id           Int       @id @default(autoincrement())
+  email        String    @unique
+  passwordHash String
+  name         String?
+  role         String      @default("USER")
+  createdAt    DateTime  @default(now())
+  sessions     Session[]
+  orders       Order[]   @relation("OrderCreatedBy")
+}
+
+model Session {
+  id        String   @id
+  userId    Int
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+

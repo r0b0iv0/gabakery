@@ -1,0 +1,66 @@
+.hero {
+
+    background-image:
+    linear-gradient(
+      rgba(0, 0, 0, 0.35),
+      rgba(0, 0, 0, 0.35)
+    ),
+    url("../assets/cake-background.avif");
+
+  text-align: center;
+  padding: 40px 0 20px;
+
+  min-height: 600px;
+
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.hero-emoji { font-size: 3rem; }
+.hero-title { font-size: 2.2rem; margin: 10px 0; text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);}
+.hero-text {
+  max-width: 520px;
+  margin: 0 auto 26px;
+  color: var(--cream);
+  line-height: 1.5;
+}
+.hero-cta {
+  display: inline-block;
+  text-decoration: none;
+}
+
+.about { margin-top: 50px; }
+
+.photo-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.photo-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  overflow: hidden;
+  text-align: center;
+}
+
+.photo-placeholder {
+  background: #fbeee0;
+  font-size: 2.4rem;
+  padding: 30px 0;
+}
+
+.photo-caption {
+  padding: 12px;
+  font-size: 0.9rem;
+  color: var(--brown);
+  font-weight: 600;
+}

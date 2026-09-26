@@ -1,0 +1,33 @@
+
+.success { text-align: center; padding: 40px 0; }
+.success-emoji { font-size: 3rem; }
+
+.empty-state { color: #8a6a55; margin-top: 20px; }
+
+.order-list { display: flex; flex-direction: column; gap: 14px; margin-top: 20px; }
+
+.order-card {
+  background: white;
+  border: 1px solid var(--border);
+  border-left: 6px solid #ccc;
+  border-radius: 10px;
+  padding: 16px;
+}
+.order-card.status-pending { border-left-color: #d9a441; }
+.order-card.status-in_progress { border-left-color: #4a90d9; }
+.order-card.status-ready { border-left-color: #4ac97a; }
+.order-card.status-picked_up { border-left-color: #999; opacity: 0.7; }
+
+.order-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-weight: 700;
+  color: var(--brown);
+  margin-bottom: 10px;
+}
+.order-card-header select { width: auto; padding: 6px 10px; }
+
+.order-cake { margin-bottom: 8px; }
+.order-notes { font-size: 0.9rem; color: #8a6a55; margin-bottom: 8px; }
+.order-customer { font-size: 0.9rem; color: var(--brown); font-weight: 600; }
