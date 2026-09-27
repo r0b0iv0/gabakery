@@ -17,6 +17,30 @@ async function main() {
     ],
   });
 
+  const ingredients = [
+    { name: 'Flour', unit: 'g' },
+    { name: 'Sugar', unit: 'g' },
+    { name: 'Butter', unit: 'g' },
+    { name: 'Eggs', unit: 'pcs' },
+    { name: 'Milk', unit: 'ml' },
+    { name: 'Chocolate', unit: 'g' },
+    { name: 'Cocoa', unit: 'g' },
+    { name: 'Cream', unit: 'ml' },
+    { name: 'Vanilla', unit: 'ml' },
+    { name: 'Baking powder', unit: 'g' },
+    { name: 'Salt', unit: 'g' },
+    { name: 'Strawberries', unit: 'g' },
+  ];
+
+  for (const ingredient of ingredients) {
+    await prisma.ingredient.upsert({
+      where: { name: ingredient.name },
+      update: {},
+      create: ingredient,
+    });
+  }
+
+
   console.log('Seed complete ✅');
 }
 

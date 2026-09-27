@@ -1,7 +1,7 @@
 import { NavLink } from 'react-router-dom';
 import './Nav.css';
 import { useAuth } from '../auth/AuthContext';
-import { canAccessBakerView } from '../auth/permissions';
+import { canAccessBakerView, canAccessManagerView } from '../auth/permissions';
 
 
 export function Nav() {
@@ -9,6 +9,7 @@ export function Nav() {
   const { user, logout } = useAuth();
 
   const canAccessBaker = canAccessBakerView(user);
+  const canAcessManagerView = canAccessManagerView(user);
 
   return (
     <header className="nav">
@@ -22,6 +23,14 @@ export function Nav() {
         {canAccessBaker && (
           <NavLink to="/baker" className={({ isActive }) => (isActive ? 'active' : '')}>
             Изглед за пекари
+          </NavLink>
+        )}
+        {canAcessManagerView && (
+          <NavLink
+            to="/cakes/new"
+            className={({ isActive }) => (isActive ? 'active' : '')}
+          >
+            Нова торта
           </NavLink>
         )}
         <span className="nav-separator" />

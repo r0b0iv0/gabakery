@@ -23,16 +23,38 @@ export interface Order {
   cake?: Cake | null;
   notes?: string | null;
   pickupDate: string;
-  status: 'pending' | 'in_progress' | 'ready' | 'picked_up';
+  status: 'pending' | 'confirmed' | 'in_progress' | 'ready' | 'picked_up';
   createdAt: string;
 }
 
-export type Role = 'USER' | 'STAFF' | 'ADMIN';
+export type Role = 'USER' | 'STAFF' | 'MANAGER' | 'ADMIN';
 
 export type User = {
   id: number;
   email: string;
   name: string | null;
   role: Role;
+};
+
+export type Ingredient = {
+  id: number;
+  name: string;
+  unit: string;
+  description?: string | null;
+};
+
+export type CreateCakePayload = {
+  name: string;
+  description: string;
+  price: number;
+  emoji?: string;
+  recipe: {
+    name: string;
+    description?: string;
+    ingredients: {
+      ingredientId: number;
+      quantity: number;
+    }[];
+  };
 };
 

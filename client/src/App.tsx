@@ -7,6 +7,7 @@ import { LoginPage } from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Footer } from './components/Footer';
+import { CakeCreatePage } from './pages/CakeCreatePage';
 
 export default function App() {
   return (
@@ -17,9 +18,17 @@ export default function App() {
         <Routes>
           <Route path="/" element={<MainPage />} />
           <Route path="/order" element={<CustomerFlow />} />
-          <Route element={<ProtectedRoute allowedRoles={['STAFF', 'ADMIN']} />}>
+          <Route element={<ProtectedRoute allowedRoles={['STAFF', 'MANAGER', 'ADMIN']} />}>
             <Route path="/baker" element={<BakerView />} />
           </Route>
+          <Route
+            element={
+              <ProtectedRoute allowedRoles={['MANAGER', 'ADMIN']} />
+            }
+          >
+            <Route path="/cakes/new" element={<CakeCreatePage />} />
+          </Route>
+
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
         </Routes>

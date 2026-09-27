@@ -18,7 +18,7 @@ app.use("/api/auth", authRouter);
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 
 
-const VALID_STATUSES = ['pending', 'in_progress', 'ready', 'picked_up'];
+const VALID_STATUSES = ['pending', 'confirmed', 'in_progress', 'ready', 'picked_up'];
 
 // ---- Catalog ----
 
@@ -96,6 +96,86 @@ app.patch('/api/orders/:id/status', requireAuth, requireRole("STAFF", "ADMIN"), 
 
   res.json(order);
 });
+
+// ---- Cake Management ----
+
+app.post(
+  '/api/cakes',
+  requireAuth,
+  requireRole("MANAGER", "ADMIN"),
+  async (req, res) => {
+    const {
+      name,
+      description,
+      price,
+      emoji,
+      recipe,
+    } = req.body ?? {};
+
+    if (!name || !description || price === undefined || !recipe?.name) {
+      return res.status(400).json({
+        error: 'Липсват задължителни полета.',
+      });
+    }
+
+    try {
+      const cake = await prisma.cake.create({
+        data: {
+          name,
+          description,
+          price: Number(price),
+          emoji: emoji ?? "🎂",
+
+          recipe: {
+            create: {
+              name: recipe.name,
+              description: recipe.description ?? null,
+
+              ingredients: {
+                create: (recipe.ingredients ?? []).map((item: any) => ({
+                  ingredientId: Number(item.ingredientId),
+                  quantity: Number(item.quantity),
+                })),
+              },
+            },
+          },
+        },
+        include: {
+          recipe: {
+            include: {
+              ingredients: {
+                include: {
+                  ingredient: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      res.status(201).json(cake);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({
+        error: 'Неуспешно създаване на тортата.',
+      });
+    }
+  }
+);
+
+app.get(
+  '/api/ingredients',
+  requireAuth,
+  requireRole("MANAGER", "ADMIN"),
+  async (_req, res) => {
+    const ingredients = await prisma.ingredient.findMany({
+      orderBy: { name: 'asc' },
+    });
+
+    res.json(ingredients);
+  }
+);
+
 
 app.listen(PORT, () => {
   console.log(`🎂 GaBakery server running on http://localhost:${PORT}`);
