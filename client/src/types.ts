@@ -11,6 +11,7 @@ export interface OrderPayload {
   customerName: string;
   phone: string;
   cakeId?: number;
+  quantity: number;
   notes?: string;
   pickupDate: string; // YYYY-MM-DD
 }

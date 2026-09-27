@@ -24,10 +24,10 @@ model Order {
   id           Int      @id @default(autoincrement())
   customerName String
   phone        String
-  isCustom     Boolean  @default(false)
 
   cakeId       Int?
   cake         Cake?    @relation(fields: [cakeId], references: [id])
+  quantity      Int     @default(1)
 
   notes        String?  // free-text notes for the baker
 

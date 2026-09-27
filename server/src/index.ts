@@ -35,6 +35,7 @@ app.post('/api/orders', async (req, res) => {
     customerName,
     phone,
     cakeId,
+    quantity,
     notes,
     pickupDate,
   } = req.body ?? {};
@@ -52,6 +53,7 @@ app.post('/api/orders', async (req, res) => {
       customerName,
       phone,
       cakeId: Number(cakeId),
+      quantity: quantity,
       notes: notes ?? null,
       pickupDate: new Date(pickupDate),
     },

@@ -26,6 +26,7 @@ export function CustomerFlow() {
   // Order details
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
+  const [quantity, setQuantity] = useState(0);
   const [pickupDate, setPickupDate] = useState(tomorrowISO());
   const [notes, setNotes] = useState('');
 
@@ -62,6 +63,7 @@ export function CustomerFlow() {
         customerName,
         phone,
         cakeId: selectedCake?.id,
+        quantity,
         notes,
         pickupDate,
       });
@@ -79,6 +81,7 @@ export function CustomerFlow() {
     setSelectedCake(null);
     setCustomerName('');
     setPhone('');
+    setQuantity(1);
     setPickupDate(tomorrowISO());
     setNotes('');
     setConfirmedOrder(null);
@@ -124,6 +127,15 @@ export function CustomerFlow() {
               </>
             )}
           </div>
+
+          <label className="field-label" htmlFor="quantity">Количество</label>
+          <input
+            id="quantity"
+            type="number"
+            min="1"
+            value={quantity}
+            onChange={(e) => setQuantity(Number(e.target.value))}
+          />
 
           <label className="field-label" htmlFor="customerName">Име</label>
           <input
