@@ -172,9 +172,177 @@ app.get(
   async (_req, res) => {
     const ingredients = await prisma.ingredient.findMany({
       orderBy: { name: 'asc' },
+      include: {
+        inventory: true,
+      },
     });
 
     res.json(ingredients);
+  }
+);
+
+app.post(
+  '/api/ingredients',
+  requireAuth,
+  requireRole("MANAGER", "ADMIN"),
+  async (req, res) => {
+    const {
+      name,
+      unit,
+      description,
+      quantity,
+      lowStockThreshold,
+    } = req.body ?? {};
+
+    if (!name || !unit) {
+      return res.status(400).json({
+        error: 'Името и мерната единица са задължителни.',
+      });
+    }
+
+    try {
+      const ingredient = await prisma.ingredient.create({
+        data: {
+          name,
+          unit,
+          description: description ?? null,
+
+          inventory: {
+            create: {
+              quantity: Number(quantity ?? 0),
+              lowStockThreshold: Number(lowStockThreshold ?? 0),
+            },
+          },
+        },
+        include: {
+          inventory: true,
+        },
+      });
+
+      res.status(201).json(ingredient);
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: 'Неуспешно създаване на съставката.',
+      });
+    }
+  }
+);
+
+app.patch(
+  '/api/ingredients/:id',
+  requireAuth,
+  requireRole("MANAGER", "ADMIN"),
+  async (req, res) => {
+    const id = Number(req.params.id);
+
+    const {
+      name,
+      unit,
+      description,
+      lowStockThreshold,
+    } = req.body ?? {};
+
+    try {
+      const ingredient = await prisma.ingredient.update({
+        where: { id },
+        data: {
+          ...(name !== undefined && { name }),
+
+          ...(unit !== undefined && { unit }),
+
+          ...(description !== undefined && {
+            description: description ?? null,
+          }),
+
+          ...(lowStockThreshold !== undefined && {
+            inventory: {
+              upsert: {
+                update: {
+                  lowStockThreshold: Number(lowStockThreshold),
+                },
+                create: {
+                  quantity: 0,
+                  lowStockThreshold: Number(lowStockThreshold),
+                },
+              },
+            },
+          }),
+        },
+        include: {
+          inventory: true,
+        },
+      });
+
+      res.json(ingredient);
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: 'Неуспешно обновяване на съставката.',
+      });
+    }
+  }
+);
+
+app.patch(
+  '/api/ingredients/:id/stock',
+  requireAuth,
+  requireRole("MANAGER", "ADMIN"),
+  async (req, res) => {
+    const id = Number(req.params.id);
+    const { quantity } = req.body ?? {};
+
+    if (quantity === undefined || Number(quantity) <= 0) {
+      return res.status(400).json({
+        error: 'Количеството трябва да бъде по-голямо от 0.',
+      });
+    }
+
+    try {
+      const ingredient = await prisma.ingredient.findUnique({
+        where: { id },
+        include: { inventory: true },
+      });
+
+      if (!ingredient) {
+        return res.status(404).json({
+          error: 'Съставката не е намерена.',
+        });
+      }
+
+      const inventory = await prisma.inventory.upsert({
+        where: {
+          ingredientId: id,
+        },
+        update: {
+          quantity: {
+            increment: Number(quantity),
+          },
+        },
+        create: {
+          ingredientId: id,
+          quantity: Number(quantity),
+          lowStockThreshold: 0,
+        },
+        include: {
+          ingredient: {
+            include: {
+              inventory: true,
+            },
+          },
+        },
+      });
+
+      res.json(inventory.ingredient);
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: 'Неуспешно обновяване на наличността.',
+      });
+    }
   }
 );
 

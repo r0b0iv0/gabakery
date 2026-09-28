@@ -8,6 +8,7 @@ import RegisterPage from './pages/RegisterPage';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Footer } from './components/Footer';
 import { CakeCreatePage } from './pages/CakeCreatePage';
+import { IngredientsPage } from './pages/IngredientsPage';
 
 export default function App() {
   return (
@@ -27,6 +28,7 @@ export default function App() {
             }
           >
             <Route path="/cakes/new" element={<CakeCreatePage />} />
+            <Route path="/ingredients" element={<IngredientsPage />} />
           </Route>
 
           <Route path="/login" element={<LoginPage />} />

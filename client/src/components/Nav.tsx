@@ -26,12 +26,21 @@ export function Nav() {
           </NavLink>
         )}
         {canAcessManagerView && (
-          <NavLink
-            to="/cakes/new"
-            className={({ isActive }) => (isActive ? 'active' : '')}
-          >
-            Нова торта
-          </NavLink>
+          <>
+            <NavLink
+              to="/cakes/new"
+              className={({ isActive }) => (isActive ? 'active' : '')}
+            >
+              Нова торта
+            </NavLink>
+
+            <NavLink
+              to="/ingredients"
+              className={({ isActive }) => (isActive ? 'active' : '')}
+            >
+              Съставки
+            </NavLink>
+          </>
         )}
         <span className="nav-separator" />
         {user ? (

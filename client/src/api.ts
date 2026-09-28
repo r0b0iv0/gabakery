@@ -1,4 +1,4 @@
-import type { Cake, CreateCakePayload, Ingredient, Order, OrderPayload, User } from './types';
+import type { Cake, CreateCakePayload, CreateIngredientPayload, Ingredient, Order, OrderPayload, User } from './types';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const res = await fetch(`/api${path}`, {
@@ -61,6 +61,18 @@ export const api = {
     request<Cake>('/cakes', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+
+  createIngredient: (payload: CreateIngredientPayload) =>
+    request<Ingredient>('/ingredients', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  addIngredientStock: (id: number, quantity: number) =>
+    request<Ingredient>(`/ingredients/${id}/stock`, {
+      method: 'PATCH',
+      body: JSON.stringify({ quantity }),
     }),
 
 };

@@ -37,12 +37,6 @@ export type User = {
   role: Role;
 };
 
-export type Ingredient = {
-  id: number;
-  name: string;
-  unit: string;
-  description?: string | null;
-};
 
 export type CreateCakePayload = {
   name: string;
@@ -57,5 +51,26 @@ export type CreateCakePayload = {
       quantity: number;
     }[];
   };
+};
+
+export type Ingredient = {
+  id: number;
+  name: string;
+  unit: string;
+  description: string | null;
+  inventory: {
+    id: number;
+    ingredientId: number;
+    quantity: number;
+    lowStockThreshold: number;
+  };
+};
+
+export type CreateIngredientPayload = {
+  name: string;
+  unit: string;
+  description?: string;
+  quantity: number;
+  lowStockThreshold: number;
 };
 
