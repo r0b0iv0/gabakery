@@ -20,12 +20,15 @@ export interface Order {
   id: number;
   customerName: string;
   phone: string;
-  isCustom: boolean;
   cake?: Cake | null;
+  quantity: number;
   notes?: string | null;
   pickupDate: string;
   status: 'pending' | 'confirmed' | 'in_progress' | 'ready' | 'picked_up';
   createdAt: string;
+
+  daysUntilPickup?: number;
+  isNearPickup?: boolean;
 }
 
 export type Role = 'USER' | 'STAFF' | 'MANAGER' | 'ADMIN';
@@ -72,5 +75,18 @@ export type CreateIngredientPayload = {
   description?: string;
   quantity: number;
   lowStockThreshold: number;
+};
+
+export type OrderAvailability = {
+  orderId: number;
+  available: boolean;
+  ingredients: {
+    ingredientId: number;
+    name: string;
+    unit: string;
+    required: number;
+    available: number;
+    sufficient: boolean;
+  }[];
 };
 

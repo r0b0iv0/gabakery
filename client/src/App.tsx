@@ -9,6 +9,7 @@ import { ProtectedRoute } from './components/ProtectedRoute';
 import { Footer } from './components/Footer';
 import { CakeCreatePage } from './pages/CakeCreatePage';
 import { IngredientsPage } from './pages/IngredientsPage';
+import { OrderManagementPage } from './pages/OrdermanagementPage';
 
 export default function App() {
   return (
@@ -29,6 +30,7 @@ export default function App() {
           >
             <Route path="/cakes/new" element={<CakeCreatePage />} />
             <Route path="/ingredients" element={<IngredientsPage />} />
+            <Route path="/orders/manage" element={<OrderManagementPage />} />
           </Route>
 
           <Route path="/login" element={<LoginPage />} />

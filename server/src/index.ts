@@ -346,6 +346,294 @@ app.patch(
   }
 );
 
+// order management
+
+app.get(
+  '/api/management/orders',
+  requireAuth,
+  requireRole("MANAGER", "ADMIN"),
+  async (_req, res) => {
+    try {
+      const orders = await prisma.order.findMany({
+        where: {
+          status: 'pending',
+        },
+        include: {
+          cake: {
+            include: {
+              recipe: {
+                include: {
+                  ingredients: {
+                    include: {
+                      ingredient: {
+                        include: {
+                          inventory: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+        orderBy: [
+          { pickupDate: 'asc' },
+          { createdAt: 'asc' },
+        ],
+      });
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      const result = orders.map(order => {
+        const pickupDate = new Date(order.pickupDate);
+        pickupDate.setHours(0, 0, 0, 0);
+
+        const difference =
+          pickupDate.getTime() - today.getTime();
+
+        const daysUntilPickup =
+          Math.round(difference / (1000 * 60 * 60 * 24));
+
+        return {
+          ...order,
+          daysUntilPickup,
+          isNearPickup: daysUntilPickup <= 2,
+        };
+      });
+
+      res.json(result);
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: 'Неуспешно зареждане на поръчките.',
+      });
+    }
+  }
+);
+
+app.get(
+  '/api/management/orders/:id/availability',
+  requireAuth,
+  requireRole("MANAGER", "ADMIN"),
+  async (req, res) => {
+    const id = Number(req.params.id);
+
+    try {
+      const order = await prisma.order.findUnique({
+        where: { id },
+        include: {
+          cake: {
+            include: {
+              recipe: {
+                include: {
+                  ingredients: {
+                    include: {
+                      ingredient: {
+                        include: {
+                          inventory: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          error: 'Поръчката не е намерена.',
+        });
+      }
+
+      if (!order.cake?.recipe) {
+        return res.status(400).json({
+          error: 'Поръчката няма рецепта.',
+        });
+      }
+
+      const ingredients = order.cake.recipe.ingredients.map(item => {
+        const required =
+          item.quantity * order.quantity;
+
+        const available =
+          item.ingredient.inventory?.quantity ?? 0;
+
+        return {
+          ingredientId: item.ingredient.id,
+          name: item.ingredient.name,
+          unit: item.ingredient.unit,
+          required,
+          available,
+          sufficient: available >= required,
+        };
+      });
+
+      const available = ingredients.every(
+        ingredient => ingredient.sufficient
+      );
+
+      res.json({
+        orderId: order.id,
+        available,
+        ingredients,
+      });
+    } catch (error) {
+      console.error(error);
+
+      res.status(500).json({
+        error: 'Неуспешна проверка на наличностите.',
+      });
+    }
+  }
+);
+
+app.patch(
+  '/api/management/orders/:id/confirm',
+  requireAuth,
+  requireRole("MANAGER", "ADMIN"),
+  async (req, res) => {
+    const id = Number(req.params.id);
+
+    try {
+      const result = await prisma.$transaction(async tx => {
+        const order = await tx.order.findUnique({
+          where: { id },
+          include: {
+            cake: {
+              include: {
+                recipe: {
+                  include: {
+                    ingredients: {
+                      include: {
+                        ingredient: {
+                          include: {
+                            inventory: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        });
+
+        if (!order) {
+          throw new Error('ORDER_NOT_FOUND');
+        }
+
+        if (order.status !== 'pending') {
+          throw new Error('ORDER_NOT_PENDING');
+        }
+
+        if (!order.cake?.recipe) {
+          throw new Error('RECIPE_NOT_FOUND');
+        }
+
+        const requiredIngredients =
+          order.cake.recipe.ingredients.map(item => {
+            const required =
+              item.quantity * order.quantity;
+
+            const available =
+              item.ingredient.inventory?.quantity ?? 0;
+
+            return {
+              ingredientId: item.ingredient.id,
+              name: item.ingredient.name,
+              unit: item.ingredient.unit,
+              required,
+              available,
+              sufficient: available >= required,
+            };
+          });
+
+        const unavailable =
+          requiredIngredients.filter(
+            ingredient => !ingredient.sufficient
+          );
+
+        if (unavailable.length > 0) {
+          return {
+            success: false,
+            unavailable,
+          };
+        }
+
+        for (const item of requiredIngredients) {
+          await tx.inventory.update({
+            where: {
+              ingredientId: item.ingredientId,
+            },
+            data: {
+              quantity: {
+                decrement: item.required,
+              },
+            },
+          });
+        }
+
+        const updatedOrder = await tx.order.update({
+          where: { id },
+          data: {
+            status: 'confirmed',
+          },
+          include: {
+            cake: true,
+          },
+        });
+
+        return {
+          success: true,
+          order: updatedOrder,
+        };
+      });
+
+      if (!result.success) {
+        return res.status(400).json({
+          error: 'Недостатъчна наличност на някои съставки.',
+          unavailable: result.unavailable,
+        });
+      }
+
+      res.json(result.order);
+    } catch (error) {
+      console.error(error);
+
+      if (error instanceof Error) {
+        if (error.message === 'ORDER_NOT_FOUND') {
+          return res.status(404).json({
+            error: 'Поръчката не е намерена.',
+          });
+        }
+
+        if (error.message === 'ORDER_NOT_PENDING') {
+          return res.status(400).json({
+            error: 'Поръчката вече е обработена.',
+          });
+        }
+
+        if (error.message === 'RECIPE_NOT_FOUND') {
+          return res.status(400).json({
+            error: 'Поръчката няма рецепта.',
+          });
+        }
+      }
+
+      res.status(500).json({
+        error: 'Неуспешно потвърждаване на поръчката.',
+      });
+    }
+  }
+);
+
 
 app.listen(PORT, () => {
   console.log(`🎂 GaBakery server running on http://localhost:${PORT}`);

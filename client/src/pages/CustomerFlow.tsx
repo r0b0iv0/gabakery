@@ -19,14 +19,11 @@ export function CustomerFlow() {
   const [submitting, setSubmitting] = useState(false);
   const [confirmedOrder, setConfirmedOrder] = useState<Order | null>(null);
 
-  // Selection state
   const [selectedCake, setSelectedCake] = useState<Cake | null>(null);
 
-
-  // Order details
   const [customerName, setCustomerName] = useState('');
   const [phone, setPhone] = useState('');
-  const [quantity, setQuantity] = useState(0);
+  const [quantity, setQuantity] = useState(1);
   const [pickupDate, setPickupDate] = useState(tomorrowISO());
   const [notes, setNotes] = useState('');
 

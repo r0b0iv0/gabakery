@@ -40,6 +40,13 @@ export function Nav() {
             >
               Съставки
             </NavLink>
+
+            <NavLink
+              to="/orders/manage"
+              className={({ isActive }) => (isActive ? 'active' : '')}
+            >
+              Поръчки
+            </NavLink>
           </>
         )}
         <span className="nav-separator" />
