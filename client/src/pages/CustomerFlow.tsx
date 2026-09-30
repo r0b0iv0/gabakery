@@ -3,7 +3,7 @@ import { api } from '../api';
 import { CakeCard } from '../components/CakeCard';
 import type { Cake, Order, } from '../types';
 
-type Step = 'select' | 'customize' | 'details' | 'success';
+type Step = 'select' | 'details' | 'success';
 
 function tomorrowISO(): string {
   const d = new Date();

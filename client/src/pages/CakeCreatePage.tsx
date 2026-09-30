@@ -3,6 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import type { Ingredient } from '../types';
 
+type Step = 'create' | 'success';
+
+
 type RecipeIngredient = {
     ingredientId: number;
     quantity: string;
@@ -10,6 +13,9 @@ type RecipeIngredient = {
 
 export function CakeCreatePage() {
     const navigate = useNavigate();
+
+    const [step, setStep] = useState<Step>('create');
+
 
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
 
@@ -102,7 +108,7 @@ export function CakeCreatePage() {
                 },
             });
 
-            navigate('/baker');
+            setStep("success")
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Възникна грешка.');
         } finally {
@@ -110,147 +116,177 @@ export function CakeCreatePage() {
         }
     }
 
+    function startOver() {
+        setStep("create");
+        setIngredients([]);
+        setName('');
+        setDescription('');
+        setEmoji('🎂');
+        setPrice('');
+        setRecipeName('');
+        setRecipeDescription('');
+        setRecipeIngredients([])
+        setError('')
+    }
+
     return (
         <div className="page">
-            <h1>Създаване на торта</h1>
-            <p className="subtitle">
-                Добавете нова торта и нейната рецепта.
-            </p>
 
-            {error && <div className="error-banner">{error}</div>}
+            {step === "create" && (
+                <>
+                    <h1>Създаване на торта</h1>
+                    <p className="subtitle">
+                        Добавете нова торта и нейната рецепта.
+                    </p>
 
-            <form onSubmit={handleSubmit}>
-                <label className="field-label">Име на тортата</label>
-                <input
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="Напр. Шоколадова торта"
-                />
+                    {error && <div className="error-banner">{error}</div>}
 
-                <label className="field-label">Описание</label>
-                <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Описание на тортата"
-                />
+                    <form onSubmit={handleSubmit}>
+                        <label className="field-label">Име на тортата</label>
+                        <input
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            placeholder="Напр. Шоколадова торта"
+                        />
 
-                <label className="field-label">Цена</label>
-                <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={price}
-                    onChange={(e) => setPrice(e.target.value)}
-                />
+                        <label className="field-label">Описание</label>
+                        <textarea
+                            value={description}
+                            onChange={(e) => setDescription(e.target.value)}
+                            placeholder="Описание на тортата"
+                        />
 
-                <label className="field-label">Емоджи</label>
-                <input
-                    value={emoji}
-                    onChange={(e) => setEmoji(e.target.value)}
-                    maxLength={4}
-                />
+                        <label className="field-label">Цена</label>
+                        <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={price}
+                            onChange={(e) => setPrice(e.target.value)}
+                        />
 
-                <h2>Рецепта</h2>
+                        <label className="field-label">Емоджи</label>
+                        <input
+                            value={emoji}
+                            onChange={(e) => setEmoji(e.target.value)}
+                            maxLength={4}
+                        />
 
-                <label className="field-label">Име на рецептата</label>
-                <input
-                    value={recipeName}
-                    onChange={(e) => setRecipeName(e.target.value)}
-                    placeholder="Напр. Шоколадова торта"
-                />
+                        <h2>Рецепта</h2>
 
-                <label className="field-label">Описание на рецептата</label>
-                <textarea
-                    value={recipeDescription}
-                    onChange={(e) => setRecipeDescription(e.target.value)}
-                />
+                        <label className="field-label">Име на рецептата</label>
+                        <input
+                            value={recipeName}
+                            onChange={(e) => setRecipeName(e.target.value)}
+                            placeholder="Напр. Шоколадова торта"
+                        />
 
-                <label className="field-label">Съставки</label>
+                        <label className="field-label">Описание на рецептата</label>
+                        <textarea
+                            value={recipeDescription}
+                            onChange={(e) => setRecipeDescription(e.target.value)}
+                        />
 
-                {recipeIngredients.map((item, index) => {
-                    const ingredient = ingredients.find(
-                        (i) => i.id === item.ingredientId
-                    );
+                        <label className="field-label">Съставки</label>
 
-                    return (
-                        <div
-                            key={index}
-                            style={{
-                                display: 'flex',
-                                gap: 8,
-                                marginBottom: 8,
-                                alignItems: 'center',
-                            }}
+                        {recipeIngredients.map((item, index) => {
+                            const ingredient = ingredients.find(
+                                (i) => i.id === item.ingredientId
+                            );
+
+                            return (
+                                <div
+                                    key={index}
+                                    style={{
+                                        display: 'flex',
+                                        gap: 8,
+                                        marginBottom: 8,
+                                        alignItems: 'center',
+                                    }}
+                                >
+                                    <select
+                                        value={item.ingredientId}
+                                        onChange={(e) =>
+                                            updateIngredient(
+                                                index,
+                                                'ingredientId',
+                                                e.target.value
+                                            )
+                                        }
+                                    >
+                                        {ingredients.map((ingredient) => (
+                                            <option key={ingredient.id} value={ingredient.id}>
+                                                {ingredient.name}
+                                            </option>
+                                        ))}
+                                    </select>
+
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder={`Количество (${ingredient?.unit ?? ''})`}
+                                        value={item.quantity}
+                                        onChange={(e) =>
+                                            updateIngredient(
+                                                index,
+                                                'quantity',
+                                                e.target.value
+                                            )
+                                        }
+                                    />
+
+                                    <button
+                                        type="button"
+                                        className="secondary"
+                                        onClick={() => removeIngredient(index)}
+                                    >
+                                        Премахни
+                                    </button>
+                                </div>
+                            );
+                        })}
+
+                        <button
+                            type="button"
+                            className="secondary"
+                            onClick={addIngredient}
                         >
-                            <select
-                                value={item.ingredientId}
-                                onChange={(e) =>
-                                    updateIngredient(
-                                        index,
-                                        'ingredientId',
-                                        e.target.value
-                                    )
-                                }
-                            >
-                                {ingredients.map((ingredient) => (
-                                    <option key={ingredient.id} value={ingredient.id}>
-                                        {ingredient.name}
-                                    </option>
-                                ))}
-                            </select>
+                            + Добави съставка
+                        </button>
 
-                            <input
-                                type="number"
-                                min="0"
-                                step="0.01"
-                                placeholder={`Количество (${ingredient?.unit ?? ''})`}
-                                value={item.quantity}
-                                onChange={(e) =>
-                                    updateIngredient(
-                                        index,
-                                        'quantity',
-                                        e.target.value
-                                    )
-                                }
-                            />
+                        <div className="actions">
+                            <button
+                                type="submit"
+                                className="primary"
+                                disabled={saving}
+                            >
+                                {saving ? 'Запазване...' : 'Създай торта'}
+                            </button>
 
                             <button
                                 type="button"
                                 className="secondary"
-                                onClick={() => removeIngredient(index)}
+                                onClick={() => navigate('/baker')}
                             >
-                                Премахни
+                                Отказ
                             </button>
                         </div>
-                    );
-                })}
+                    </form>
+                </>
+            )}
 
-                <button
-                    type="button"
-                    className="secondary"
-                    onClick={addIngredient}
-                >
-                    + Добави съставка
-                </button>
-
-                <div className="actions">
-                    <button
-                        type="submit"
-                        className="primary"
-                        disabled={saving}
-                    >
-                        {saving ? 'Запазване...' : 'Създай торта'}
-                    </button>
-
-                    <button
-                        type="button"
-                        className="secondary"
-                        onClick={() => navigate('/baker')}
-                    >
-                        Отказ
-                    </button>
+            {step === 'success' && (
+                <div className="success">
+                    <div className="success-emoji">✅</div>
+                    <h1>Успешно създадена торта!</h1>
+                    <p>
+                        Можеш да откриеш своята торта на страницата <strong> Поръчай торта</strong>
+                    </p>
+                    <button className="primary" onClick={startOver}>Нова поръчка</button>
                 </div>
-            </form>
+            )}
         </div>
+
     );
 }
