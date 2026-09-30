@@ -49,6 +49,8 @@ model User {
   createdAt    DateTime  @default(now())
   sessions     Session[]
   orders       Order[]   @relation("OrderCreatedBy")
+
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Session {
@@ -107,6 +109,18 @@ model RecipeIngredient {
   ingredient   Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
 
   @@unique([recipeId, ingredientId])
+}
+
+model PasswordResetToken {
+  id        Int      @id @default(autoincrement())
+  token     String   @unique
+  userId    Int
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 

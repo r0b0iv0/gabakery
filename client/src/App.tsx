@@ -10,6 +10,8 @@ import { Footer } from './components/Footer';
 import { CakeCreatePage } from './pages/CakeCreatePage';
 import { IngredientsPage } from './pages/IngredientsPage';
 import { OrderManagementPage } from './pages/OrdermanagementPage';
+import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 
 export default function App() {
   return (
@@ -35,6 +37,8 @@ export default function App() {
 
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+          <Route path="/reset-password" element={<ResetPasswordPage />} />
         </Routes>
       </main>
       <Footer />

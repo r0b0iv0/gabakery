@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./Auth.css";
 
 export function LoginPage() {
@@ -107,6 +107,10 @@ export function LoginPage() {
                         Регистрирайте се
                     </a>
                 </div>
+
+                <Link to="/forgot-password">
+                    Забравена парола?
+                </Link>
 
             </div>
         </div>

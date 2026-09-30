@@ -133,6 +133,132 @@ router.post("/logout", async (req, res) => {
     return res.status(204).send();
 });
 
+router.post('/forgot-password', async (req, res) => {
+    const { email } = req.body ?? {};
+
+    if (!email) {
+        return res.status(400).json({
+            error: 'Имейлът е задължителен.',
+        });
+    }
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: {
+                email: email.toLowerCase().trim(),
+            },
+        });
+
+        if (!user) {
+            return res.json({
+                message:
+                    'Ако съществува акаунт с този имейл, ще бъде изпратен линк за възстановяване.',
+            });
+        }
+
+        await prisma.passwordResetToken.deleteMany({
+            where: {
+                userId: user.id,
+            },
+        });
+
+        const token = crypto.randomBytes(32).toString('hex');
+
+        await prisma.passwordResetToken.create({
+            data: {
+                token,
+                userId: user.id,
+                expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+            },
+        });
+
+        const resetUrl =
+            `http://localhost:5173/reset-password?token=${token}`;
+
+        console.log('Password reset URL:', resetUrl);
+
+        res.json({
+            message:
+                'Ако съществува акаунт с този имейл, ще бъде изпратен линк за възстановяване.',
+        });
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            error: 'Възникна грешка.',
+        });
+    }
+});
+
+router.post('/reset-password', async (req, res) => {
+    const { token, password } = req.body ?? {};
+
+    if (!token || !password) {
+        return res.status(400).json({
+            error: 'Липсват задължителни данни.',
+        });
+    }
+
+    if (password.length < 6) {
+        return res.status(400).json({
+            error: 'Паролата трябва да бъде поне 6 символа.',
+        });
+    }
+
+    try {
+        const resetToken = await prisma.passwordResetToken.findUnique({
+            where: {
+                token,
+            },
+        });
+
+        if (!resetToken) {
+            return res.status(400).json({
+                error: 'Невалиден или изтекъл линк.',
+            });
+        }
+
+        if (resetToken.expiresAt < new Date()) {
+            await prisma.passwordResetToken.delete({
+                where: {
+                    id: resetToken.id,
+                },
+            });
+
+            return res.status(400).json({
+                error: 'Линкът за възстановяване е изтекъл.',
+            });
+        }
+
+        const passwordHash = await argon2.hash(password, { hashLength: 10 });
+
+        await prisma.user.update({
+            where: {
+                id: resetToken.userId,
+            },
+            data: {
+                passwordHash,
+            },
+        });
+
+        await prisma.passwordResetToken.delete({
+            where: {
+                id: resetToken.id,
+            },
+        });
+
+        res.json({
+            message: 'Паролата беше променена успешно.',
+        });
+    } catch (error) {
+        console.error(error);
+
+        res.status(500).json({
+            error: 'Неуспешно променяне на паролата.',
+        });
+    }
+});
+
 router.get("/me", requireAuth, (req, res) => {
     res.json({
         user: req.user,
