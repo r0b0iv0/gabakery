@@ -66,6 +66,8 @@ export const api = {
   getCakes: () => request<Cake[]>('/cakes'),
   createOrder: (payload: OrderPayload) =>
     request<Order>('/orders', { method: 'POST', body: JSON.stringify(payload) }),
+
+
   getOrdersByDate: (date: string) => request<Order[]>(`/orders?date=${date}`),
   updateOrderStatus: (id: number, status: Order['status']) =>
     request<Order>(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),

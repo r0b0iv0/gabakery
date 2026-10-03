@@ -7,37 +7,43 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// A premade cake from the catalog
 model Cake {
-  id          Int     @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   name        String
   description String
   price       Float
-  emoji       String  @default("🎂")
-  orders      Order[]
+  emoji       String   @default("🎂")
+
+  orderItems  OrderItem[]
   recipe      Recipe?
 }
 
-// A single order — either references a premade Cake, or is fully custom
-// (flavor/toppings/size filled in directly on the order).
 model Order {
   id           Int      @id @default(autoincrement())
   customerName String
   phone        String
 
-  cakeId       Int?
-  cake         Cake?    @relation(fields: [cakeId], references: [id])
-  quantity      Int     @default(1)
+  items        OrderItem[]
 
-  notes        String?  // free-text notes for the baker
-
+  notes        String?
   pickupDate   DateTime
-  status       String   @default("pending") // pending | in_progress | ready | picked_up
-
+  status       String   @default("pending")
   createdAt    DateTime @default(now())
 
   createdById  Int?
-  createdBy   User? @relation( "OrderCreatedBy", fields: [createdById], references: [id])
+  createdBy    User?    @relation("OrderCreatedBy", fields: [createdById], references: [id])
+}
+
+model OrderItem {
+  id       Int   @id @default(autoincrement())
+  orderId  Int
+  cakeId   Int
+  quantity Int
+
+  order    Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  cake     Cake  @relation(fields: [cakeId], references: [id])
+
+  @@unique([orderId, cakeId])
 }
 
 model User {

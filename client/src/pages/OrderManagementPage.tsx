@@ -5,15 +5,13 @@ import './OrderManagementPage.css';
 
 export function OrderManagementPage() {
     const [orders, setOrders] = useState<Order[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
-
     const [availability, setAvailability] = useState<
         Record<number, OrderAvailability>
     >({});
-
-    const [checkingOrder, setCheckingOrder] = useState<number | null>(null);
-    const [confirmingOrder, setConfirmingOrder] = useState<number | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    const [checking, setChecking] = useState<number | null>(null);
+    const [confirming, setConfirming] = useState<number | null>(null);
 
     useEffect(() => {
         loadOrders();
@@ -22,14 +20,8 @@ export function OrderManagementPage() {
     async function loadOrders() {
         try {
             setError('');
-
             const data = await api.getManagementOrders();
-
             setOrders(data);
-
-            for (const order of data) {
-                checkAvailability(order.id);
-            }
         } catch (err) {
             setError(
                 err instanceof Error
@@ -43,38 +35,39 @@ export function OrderManagementPage() {
 
     async function checkAvailability(orderId: number) {
         try {
-            setCheckingOrder(orderId);
+            setChecking(orderId);
+            setError('');
 
-            const data = await api.getOrderAvailability(orderId);
+            const result = await api.getOrderAvailability(orderId);
 
-            setAvailability(prev => ({
-                ...prev,
-                [orderId]: data,
+            setAvailability(current => ({
+                ...current,
+                [orderId]: result,
             }));
         } catch (err) {
             setError(
                 err instanceof Error
                     ? err.message
-                    : 'Грешка при проверка на наличностите.'
+                    : 'Грешка при проверка на наличността.'
             );
         } finally {
-            setCheckingOrder(null);
+            setChecking(null);
         }
     }
 
-    async function handleConfirm(orderId: number) {
+    async function confirmOrder(orderId: number) {
         try {
+            setConfirming(orderId);
             setError('');
-            setConfirmingOrder(orderId);
 
             await api.confirmOrder(orderId);
 
-            setOrders(prev =>
-                prev.filter(order => order.id !== orderId)
+            setOrders(current =>
+                current.filter(order => order.id !== orderId)
             );
 
-            setAvailability(prev => {
-                const next = { ...prev };
+            setAvailability(current => {
+                const next = { ...current };
                 delete next[orderId];
                 return next;
             });
@@ -84,78 +77,52 @@ export function OrderManagementPage() {
                     ? err.message
                     : 'Грешка при потвърждаване на поръчката.'
             );
-
-            await checkAvailability(orderId);
         } finally {
-            setConfirmingOrder(null);
+            setConfirming(null);
         }
     }
 
-    function getOrderCategory(order: Order) {
+    function getOrderGroup(order: Order) {
         if (order.daysUntilPickup === 0) {
-            return 'today';
+            return 'Днес';
         }
 
         if (order.daysUntilPickup === 1) {
-            return 'tomorrow';
+            return 'Утре';
         }
 
-        if (order.isNearPickup) {
-            return 'soon';
+        if (
+            order.daysUntilPickup !== undefined &&
+            order.daysUntilPickup <= 2
+        ) {
+            return 'Следващите дни';
         }
 
-        return 'future';
+        return 'Бъдещи поръчки';
     }
 
-    function getCategoryTitle(category: string) {
-        switch (category) {
-            case 'today':
-                return '🔴 Днес';
-
-            case 'tomorrow':
-                return '🟡 Утре';
-
-            case 'soon':
-                return '🟢 Следващи дни';
-
-            default:
-                return '📅 Бъдещи поръчки';
-        }
-    }
-
-    function formatDate(date: string) {
-        return new Date(date).toLocaleDateString('bg-BG', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-        });
-    }
+    const groups = [
+        'Днес',
+        'Утре',
+        'Следващите дни',
+        'Бъдещи поръчки',
+    ];
 
     if (loading) {
         return (
-            <div className="page order-management-page">
+            <div className="page">
                 <p>Зареждане...</p>
             </div>
         );
     }
 
-    const categories = ['today', 'tomorrow', 'soon', 'future'];
-
     return (
         <div className="page order-management-page">
-            <div className="management-header">
-                <div>
-                    <h1>Управление на поръчки</h1>
-                    <p className="subtitle">
-                        Проверка на наличности и потвърждаване на поръчки
-                    </p>
-                </div>
+            <h1>Управление на поръчки</h1>
 
-                <div className="orders-count">
-                    <strong>{orders.length}</strong>
-                    <span>чакащи поръчки</span>
-                </div>
-            </div>
+            <p className="subtitle">
+                Проверявайте какви ресурси ще използва всяка поръчка.
+            </p>
 
             {error && (
                 <div className="error-banner">
@@ -163,183 +130,188 @@ export function OrderManagementPage() {
                 </div>
             )}
 
-            {orders.length === 0 ? (
-                <div className="orders-empty">
-                    <span>🎉</span>
-                    <h2>Няма чакащи поръчки</h2>
-                    <p>Всички поръчки са обработени.</p>
+            {orders.length === 0 && (
+                <div className="empty-orders">
+                    Няма чакащи поръчки.
                 </div>
-            ) : (
-                categories.map(category => {
-                    const categoryOrders = orders.filter(
-                        order => getOrderCategory(order) === category
-                    );
+            )}
 
-                    if (categoryOrders.length === 0) {
-                        return null;
-                    }
+            {groups.map(group => {
+                const groupOrders = orders.filter(
+                    order => getOrderGroup(order) === group
+                );
 
-                    return (
-                        <section
-                            key={category}
-                            className={`order-section order-section-${category}`}
-                        >
-                            <h2>{getCategoryTitle(category)}</h2>
+                if (groupOrders.length === 0) {
+                    return null;
+                }
 
-                            <div className="management-order-list">
-                                {categoryOrders.map(order => {
-                                    const orderAvailability =
-                                        availability[order.id];
+                return (
+                    <section className="order-group" key={group}>
+                        <h2>{group}</h2>
 
-                                    const isChecking =
-                                        checkingOrder === order.id;
+                        <div className="management-orders">
+                            {groupOrders.map(order => {
+                                const orderAvailability =
+                                    availability[order.id];
 
-                                    const isConfirming =
-                                        confirmingOrder === order.id;
+                                const isChecking =
+                                    checking === order.id;
 
-                                    const canConfirm =
-                                        orderAvailability?.available === true;
+                                const isConfirming =
+                                    confirming === order.id;
 
-                                    return (
-                                        <div
-                                            key={order.id}
-                                            className="management-order-card"
-                                        >
-                                            <div className="order-card-header">
-                                                <div>
-                                                    <span className="order-number">
-                                                        Поръчка #{order.id}
+                                return (
+                                    <div
+                                        className="management-order"
+                                        key={order.id}
+                                    >
+                                        <div className="management-order-header">
+                                            <div>
+                                                <h3>Поръчка #{order.id}</h3>
+
+                                                <p>
+                                                    {order.customerName} · {order.phone}
+                                                </p>
+                                            </div>
+
+                                            <span className="pickup-date">
+                                                {new Date(
+                                                    order.pickupDate
+                                                ).toLocaleDateString('bg-BG')}
+                                            </span>
+                                        </div>
+
+                                        <div className="management-order-items">
+                                            {order.items.map(item => (
+                                                <div
+                                                    className="management-order-item"
+                                                    key={item.id}
+                                                >
+                                                    <span>
+                                                        {item.cake.emoji}{' '}
+                                                        {item.cake.name}
                                                     </span>
 
-                                                    <h3>
-                                                        {order.cake?.emoji}{' '}
-                                                        {order.cake?.name}
-                                                        {' × '}
-                                                        {order.quantity}
-                                                    </h3>
-                                                </div>
-
-                                                <div className="pickup-info">
-                                                    <span>Вземане</span>
                                                     <strong>
-                                                        {formatDate(order.pickupDate)}
+                                                        × {item.quantity}
                                                     </strong>
                                                 </div>
+                                            ))}
+                                        </div>
+
+                                        {order.notes && (
+                                            <div className="management-notes">
+                                                <strong>Бележки:</strong>{' '}
+                                                {order.notes}
                                             </div>
+                                        )}
 
-                                            <div className="customer-info">
-                                                <strong>
-                                                    {order.customerName}
-                                                </strong>
+                                        {orderAvailability && (
+                                            <div className="availability">
+                                                <h4>Необходими ресурси</h4>
 
-                                                <span>
-                                                    {order.phone}
-                                                </span>
-                                            </div>
-
-                                            {order.notes && (
-                                                <div className="order-notes">
-                                                    <strong>Бележка:</strong>{' '}
-                                                    {order.notes}
+                                                <div className="availability-header">
+                                                    <span>Съставка</span>
+                                                    <span>Нужни</span>
+                                                    <span>Налични</span>
+                                                    <span>Остават</span>
                                                 </div>
-                                            )}
 
-                                            <div className="ingredients-header">
-                                                <h4>Необходими съставки</h4>
+                                                {orderAvailability.ingredients.map(ingredient => {
+                                                    const remaining =
+                                                        ingredient.available - ingredient.required;
 
-                                                {isChecking && (
-                                                    <span className="checking">
-                                                        Проверка...
-                                                    </span>
-                                                )}
-                                            </div>
+                                                    return (
+                                                        <div
+                                                            className="availability-row"
+                                                            key={ingredient.ingredientId}
+                                                        >
+                                                            <span className="ingredient-name">
+                                                                {ingredient.name}
+                                                            </span>
 
-                                            {orderAvailability && (
-                                                <div className="order-ingredients">
-                                                    {orderAvailability.ingredients.map(
-                                                        ingredient => (
-                                                            <div
-                                                                key={ingredient.ingredientId}
-                                                                className={`ingredient-row ${ingredient.sufficient
-                                                                        ? 'ingredient-sufficient'
+                                                            <span className="ingredient-needed">
+                                                                {ingredient.required} {ingredient.unit}
+                                                            </span>
+
+                                                            <span
+                                                                className={
+                                                                    ingredient.sufficient
+                                                                        ? 'ingredient-available'
                                                                         : 'ingredient-insufficient'
-                                                                    }`}
-                                                            >
-                                                                <div>
-                                                                    <strong>
-                                                                        {ingredient.name}
-                                                                    </strong>
-                                                                </div>
-
-                                                                <div className="ingredient-amount">
-                                                                    <span>
-                                                                        Нужно:{' '}
-                                                                        {ingredient.required}{' '}
-                                                                        {ingredient.unit}
-                                                                    </span>
-
-                                                                    <span>
-                                                                        Налично:{' '}
-                                                                        {ingredient.available}{' '}
-                                                                        {ingredient.unit}
-                                                                    </span>
-                                                                </div>
-
-                                                                <span className="ingredient-status">
-                                                                    {ingredient.sufficient
-                                                                        ? '🟢'
-                                                                        : '🔴'}
-                                                                </span>
-                                                            </div>
-                                                        )
-                                                    )}
-                                                </div>
-                                            )}
-
-                                            <div className="order-card-footer">
-                                                {!orderAvailability && !isChecking && (
-                                                    <button
-                                                        type="button"
-                                                        className="secondary"
-                                                        onClick={() =>
-                                                            checkAvailability(order.id)
-                                                        }
-                                                    >
-                                                        Провери наличност
-                                                    </button>
-                                                )}
-
-                                                {orderAvailability && (
-                                                    <>
-                                                        {canConfirm ? (
-                                                            <button
-                                                                type="button"
-                                                                className="primary"
-                                                                disabled={isConfirming}
-                                                                onClick={() =>
-                                                                    handleConfirm(order.id)
                                                                 }
                                                             >
-                                                                {isConfirming
-                                                                    ? 'Потвърждаване...'
-                                                                    : '✓ Потвърди поръчката'}
-                                                            </button>
-                                                        ) : (
-                                                            <div className="insufficient-warning">
-                                                                🔴 Недостатъчно количество
-                                                            </div>
-                                                        )}
-                                                    </>
-                                                )}
+                                                                {ingredient.available} {ingredient.unit}
+                                                            </span>
+
+                                                            <span
+                                                                className={
+                                                                    remaining >= 0
+                                                                        ? 'ingredient-remaining'
+                                                                        : 'ingredient-insufficient'
+                                                                }
+                                                            >
+                                                                {remaining} {ingredient.unit}
+                                                            </span>
+                                                        </div>
+                                                    );
+                                                })}
+
+                                                <div
+                                                    className={
+                                                        orderAvailability.available
+                                                            ? 'availability-result available'
+                                                            : 'availability-result unavailable'
+                                                    }
+                                                >
+                                                    {orderAvailability.available
+                                                        ? 'Всички необходими съставки са налични.'
+                                                        : 'Няма достатъчно количество от една или повече съставки.'}
+                                                </div>
                                             </div>
+                                        )}
+
+                                        <div className="management-order-actions">
+                                            <button
+                                                type="button"
+                                                className="secondary"
+                                                disabled={
+                                                    isChecking ||
+                                                    isConfirming
+                                                }
+                                                onClick={() =>
+                                                    checkAvailability(order.id)
+                                                }
+                                            >
+                                                {isChecking
+                                                    ? 'Проверка...'
+                                                    : orderAvailability
+                                                        ? 'Обнови наличност'
+                                                        : 'Провери наличност'}
+                                            </button>
+
+                                            {orderAvailability?.available && (
+                                                <button
+                                                    type="button"
+                                                    className="primary"
+                                                    disabled={isConfirming}
+                                                    onClick={() =>
+                                                        confirmOrder(order.id)
+                                                    }
+                                                >
+                                                    {isConfirming
+                                                        ? 'Потвърждаване...'
+                                                        : 'Потвърди поръчката'}
+                                                </button>
+                                            )}
                                         </div>
-                                    );
-                                })}
-                            </div>
-                        </section>
-                    );
-                })
-            )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </section>
+                );
+            })}
         </div>
     );
 }

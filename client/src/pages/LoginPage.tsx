@@ -106,11 +106,13 @@ export function LoginPage() {
                     <a href="/register">
                         Регистрирайте се
                     </a>
-                </div>
 
-                <Link to="/forgot-password">
-                    Забравена парола?
-                </Link>
+                    <div>
+                        <Link to="/forgot-password">
+                            Забравена парола?
+                        </Link>
+                    </div>
+                </div>
 
             </div>
         </div>

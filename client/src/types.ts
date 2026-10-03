@@ -7,29 +7,37 @@ export interface Cake {
 }
 
 
-export interface OrderPayload {
+export type OrderPayload = {
   customerName: string;
   phone: string;
-  cakeId?: number;
-  quantity: number;
+  pickupDate: string;
   notes?: string;
-  pickupDate: string; // YYYY-MM-DD
-}
+  items: {
+    cakeId: number;
+    quantity: number;
+  }[];
+};
 
-export interface Order {
+export type Order = {
   id: number;
   customerName: string;
   phone: string;
-  cake?: Cake | null;
-  quantity: number;
-  notes?: string | null;
+  items: OrderItem[];
+  notes: string | null;
   pickupDate: string;
   status: 'pending' | 'confirmed' | 'in_progress' | 'ready' | 'picked_up';
   createdAt: string;
-
+  createdById: number | null;
   daysUntilPickup?: number;
   isNearPickup?: boolean;
-}
+};
+
+export type OrderItem = {
+  id: number;
+  cakeId: number;
+  quantity: number;
+  cake: Cake;
+};
 
 export type Role = 'USER' | 'STAFF' | 'MANAGER' | 'ADMIN';
 

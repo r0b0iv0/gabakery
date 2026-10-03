@@ -34,49 +34,118 @@ app.post('/api/orders', async (req, res) => {
   const {
     customerName,
     phone,
-    cakeId,
-    quantity,
+    items,
     notes,
     pickupDate,
   } = req.body ?? {};
 
   if (!customerName || !phone || !pickupDate) {
-    return res.status(400).json({ error: 'Липсват задължителни полета (име, телефон, дата).' });
+    return res.status(400).json({
+      error: 'Липсват задължителни полета (име, телефон, дата).',
+    });
   }
 
-  if (!cakeId) {
-    return res.status(400).json({ error: 'Изберете торта от каталога' });
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({
+      error: 'Добавете поне една торта.',
+    });
   }
 
-  const order = await prisma.order.create({
-    data: {
-      customerName,
-      phone,
-      cakeId: Number(cakeId),
-      quantity: quantity,
-      notes: notes ?? null,
-      pickupDate: new Date(pickupDate),
-    },
-    include: { cake: true },
-  });
+  const normalizedItems = items.map((item: any) => ({
+    cakeId: Number(item.cakeId),
+    quantity: Number(item.quantity),
+  }));
 
-  res.status(201).json(order);
+  if (
+    normalizedItems.some(
+      item =>
+        !Number.isInteger(item.cakeId) ||
+        !Number.isInteger(item.quantity) ||
+        item.quantity <= 0
+    )
+  ) {
+    return res.status(400).json({
+      error: 'Невалидна торта или количество.',
+    });
+  }
+
+  try {
+    const cakeIds = normalizedItems.map(item => item.cakeId);
+
+    const cakes = await prisma.cake.findMany({
+      where: {
+        id: {
+          in: cakeIds,
+        },
+      },
+    });
+
+    if (cakes.length !== new Set(cakeIds).size) {
+      return res.status(400).json({
+        error: 'Една или повече торти не съществуват.',
+      });
+    }
+
+    const order = await prisma.order.create({
+      data: {
+        customerName,
+        phone,
+        notes: notes ?? null,
+        pickupDate: new Date(pickupDate),
+
+        items: {
+          create: normalizedItems.map(item => ({
+            cakeId: item.cakeId,
+            quantity: item.quantity,
+          })),
+        },
+      },
+      include: {
+        items: {
+          include: {
+            cake: true,
+          },
+        },
+      },
+    });
+
+    res.status(201).json(order);
+  } catch (error) {
+    console.error(error);
+
+    res.status(500).json({
+      error: 'Неуспешно създаване на поръчката.',
+    });
+  }
 });
 
-// GET /api/orders?date=YYYY-MM-DD  -> orders due that day (defaults to today)
 app.get('/api/orders', requireAuth, requireRole("STAFF", "ADMIN"), async (req, res) => {
   const dateParam = typeof req.query.date === 'string' ? req.query.date : undefined;
   const day = dateParam ? new Date(dateParam) : new Date();
 
   const start = new Date(day);
   start.setHours(0, 0, 0, 0);
+
   const end = new Date(day);
   end.setHours(23, 59, 59, 999);
 
   const orders = await prisma.order.findMany({
-    where: { pickupDate: { gte: start, lte: end } },
-    include: { cake: true },
-    orderBy: { createdAt: 'asc' },
+    where: {
+      pickupDate: {
+        gte: start,
+        lte: end,
+      },
+    },
+    include: {
+      items: {
+        include: {
+          cake: true,
+        },
+      },
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
   });
 
   res.json(orders);
@@ -87,13 +156,21 @@ app.patch('/api/orders/:id/status', requireAuth, requireRole("STAFF", "ADMIN"), 
   const { status } = req.body ?? {};
 
   if (!VALID_STATUSES.includes(status)) {
-    return res.status(400).json({ error: 'Невалиден статус.' });
+    return res.status(400).json({
+      error: 'Невалиден статус.',
+    });
   }
 
   const order = await prisma.order.update({
     where: { id },
     data: { status },
-    include: { cake: true },
+    include: {
+      items: {
+        include: {
+          cake: true,
+        },
+      },
+    },
   });
 
   res.json(order);
@@ -359,15 +436,19 @@ app.get(
           status: 'pending',
         },
         include: {
-          cake: {
+          items: {
             include: {
-              recipe: {
+              cake: {
                 include: {
-                  ingredients: {
+                  recipe: {
                     include: {
-                      ingredient: {
+                      ingredients: {
                         include: {
-                          inventory: true,
+                          ingredient: {
+                            include: {
+                              inventory: true,
+                            },
+                          },
                         },
                       },
                     },
@@ -378,8 +459,12 @@ app.get(
           },
         },
         orderBy: [
-          { pickupDate: 'asc' },
-          { createdAt: 'asc' },
+          {
+            pickupDate: 'asc',
+          },
+          {
+            createdAt: 'asc',
+          },
         ],
       });
 
@@ -390,11 +475,10 @@ app.get(
         const pickupDate = new Date(order.pickupDate);
         pickupDate.setHours(0, 0, 0, 0);
 
-        const difference =
-          pickupDate.getTime() - today.getTime();
-
-        const daysUntilPickup =
-          Math.round(difference / (1000 * 60 * 60 * 24));
+        const daysUntilPickup = Math.round(
+          (pickupDate.getTime() - today.getTime()) /
+          (1000 * 60 * 60 * 24)
+        );
 
         return {
           ...order,
@@ -425,15 +509,19 @@ app.get(
       const order = await prisma.order.findUnique({
         where: { id },
         include: {
-          cake: {
+          items: {
             include: {
-              recipe: {
+              cake: {
                 include: {
-                  ingredients: {
+                  recipe: {
                     include: {
-                      ingredient: {
+                      ingredients: {
                         include: {
-                          inventory: true,
+                          ingredient: {
+                            include: {
+                              inventory: true,
+                            },
+                          },
                         },
                       },
                     },
@@ -451,43 +539,69 @@ app.get(
         });
       }
 
-      if (!order.cake?.recipe) {
-        return res.status(400).json({
-          error: 'Поръчката няма рецепта.',
-        });
+      const ingredientMap = new Map<
+        number,
+        {
+          ingredientId: number;
+          name: string;
+          unit: string;
+          required: number;
+          available: number;
+          sufficient: boolean;
+        }
+      >();
+
+      for (const item of order.items) {
+        const recipe = item.cake.recipe;
+
+        if (!recipe) {
+          continue;
+        }
+
+        for (const recipeIngredient of recipe.ingredients) {
+          const ingredient = recipeIngredient.ingredient;
+
+          const required =
+            recipeIngredient.quantity * item.quantity;
+
+          const existing = ingredientMap.get(ingredient.id);
+
+          if (existing) {
+            existing.required += required;
+          } else {
+            ingredientMap.set(ingredient.id, {
+              ingredientId: ingredient.id,
+              name: ingredient.name,
+              unit: ingredient.unit,
+              required,
+              available: ingredient.inventory?.quantity ?? 0,
+              sufficient:
+                (ingredient.inventory?.quantity ?? 0) >= required,
+            });
+          }
+        }
       }
 
-      const ingredients = order.cake.recipe.ingredients.map(item => {
-        const required =
-          item.quantity * order.quantity;
-
-        const available =
-          item.ingredient.inventory?.quantity ?? 0;
-
-        return {
-          ingredientId: item.ingredient.id,
-          name: item.ingredient.name,
-          unit: item.ingredient.unit,
-          required,
-          available,
-          sufficient: available >= required,
-        };
-      });
-
-      const available = ingredients.every(
-        ingredient => ingredient.sufficient
+      const ingredients = Array.from(ingredientMap.values()).map(
+        ingredient => ({
+          ...ingredient,
+          sufficient:
+            ingredient.available >= ingredient.required,
+        })
       );
 
       res.json({
         orderId: order.id,
-        available,
+        available: ingredients.every(
+          ingredient => ingredient.sufficient
+        ),
         ingredients,
       });
     } catch (error) {
       console.error(error);
 
       res.status(500).json({
-        error: 'Неуспешна проверка на наличностите.',
+        error: 'Неуспешна проверка на наличността.',
       });
     }
   }
@@ -505,15 +619,19 @@ app.patch(
         const order = await tx.order.findUnique({
           where: { id },
           include: {
-            cake: {
+            items: {
               include: {
-                recipe: {
+                cake: {
                   include: {
-                    ingredients: {
+                    recipe: {
                       include: {
-                        ingredient: {
+                        ingredients: {
                           include: {
-                            inventory: true,
+                            ingredient: {
+                              include: {
+                                inventory: true,
+                              },
+                            },
                           },
                         },
                       },
@@ -533,77 +651,108 @@ app.patch(
           throw new Error('ORDER_NOT_PENDING');
         }
 
-        if (!order.cake?.recipe) {
-          throw new Error('RECIPE_NOT_FOUND');
-        }
+        const requiredIngredients = new Map<
+          number,
+          number
+        >();
 
-        const requiredIngredients =
-          order.cake.recipe.ingredients.map(item => {
+        for (const item of order.items) {
+          const recipe = item.cake.recipe;
+
+          if (!recipe) {
+            throw new Error(
+              `MISSING_RECIPE:${item.cake.name}`
+            );
+          }
+
+          for (const recipeIngredient of recipe.ingredients) {
             const required =
-              item.quantity * order.quantity;
+              recipeIngredient.quantity * item.quantity;
 
-            const available =
-              item.ingredient.inventory?.quantity ?? 0;
+            const current =
+              requiredIngredients.get(
+                recipeIngredient.ingredientId
+              ) ?? 0;
 
-            return {
-              ingredientId: item.ingredient.id,
-              name: item.ingredient.name,
-              unit: item.ingredient.unit,
-              required,
-              available,
-              sufficient: available >= required,
-            };
-          });
-
-        const unavailable =
-          requiredIngredients.filter(
-            ingredient => !ingredient.sufficient
-          );
-
-        if (unavailable.length > 0) {
-          return {
-            success: false,
-            unavailable,
-          };
+            requiredIngredients.set(
+              recipeIngredient.ingredientId,
+              current + required
+            );
+          }
         }
 
-        for (const item of requiredIngredients) {
+        const ingredientIds = Array.from(
+          requiredIngredients.keys()
+        );
+
+        const inventories = await tx.inventory.findMany({
+          where: {
+            ingredientId: {
+              in: ingredientIds,
+            },
+          },
+        });
+
+        const inventoryMap = new Map(
+          inventories.map(inventory => [
+            inventory.ingredientId,
+            inventory,
+          ])
+        );
+
+        for (const [
+          ingredientId,
+          required,
+        ] of requiredIngredients) {
+          const inventory = inventoryMap.get(ingredientId);
+
+          if (!inventory) {
+            throw new Error(
+              `MISSING_INVENTORY:${ingredientId}`
+            );
+          }
+
+          if (inventory.quantity < required) {
+            throw new Error(
+              `INSUFFICIENT_STOCK:${ingredientId}`
+            );
+          }
+        }
+
+        for (const [
+          ingredientId,
+          required,
+        ] of requiredIngredients) {
           await tx.inventory.update({
             where: {
-              ingredientId: item.ingredientId,
+              ingredientId,
             },
             data: {
               quantity: {
-                decrement: item.required,
+                decrement: required,
               },
             },
           });
         }
 
-        const updatedOrder = await tx.order.update({
-          where: { id },
+        return tx.order.update({
+          where: {
+            id,
+          },
           data: {
             status: 'confirmed',
           },
           include: {
-            cake: true,
+            items: {
+              include: {
+                cake: true,
+              },
+            },
           },
         });
-
-        return {
-          success: true,
-          order: updatedOrder,
-        };
       });
 
-      if (!result.success) {
-        return res.status(400).json({
-          error: 'Недостатъчна наличност на някои съставки.',
-          unavailable: result.unavailable,
-        });
-      }
-
-      res.json(result.order);
+      res.json(result);
     } catch (error) {
       console.error(error);
 
@@ -616,13 +765,25 @@ app.patch(
 
         if (error.message === 'ORDER_NOT_PENDING') {
           return res.status(400).json({
-            error: 'Поръчката вече е обработена.',
+            error: 'Поръчката вече не е чакаща.',
           });
         }
 
-        if (error.message === 'RECIPE_NOT_FOUND') {
+        if (error.message.startsWith('MISSING_RECIPE:')) {
           return res.status(400).json({
-            error: 'Поръчката няма рецепта.',
+            error: `Липсва рецепта за ${error.message.replace('MISSING_RECIPE:', '')}.`,
+          });
+        }
+
+        if (error.message.startsWith('MISSING_INVENTORY:')) {
+          return res.status(400).json({
+            error: 'Липсва наличност за необходима съставка.',
+          });
+        }
+
+        if (error.message.startsWith('INSUFFICIENT_STOCK:')) {
+          return res.status(400).json({
+            error: 'Недостатъчна наличност за тази поръчка.',
           });
         }
       }
