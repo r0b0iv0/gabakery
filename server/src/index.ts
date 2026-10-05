@@ -18,7 +18,7 @@ app.use("/api/auth", authRouter);
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 
 
-const VALID_STATUSES = ['pending', 'confirmed', 'in_progress', 'ready', 'picked_up'];
+const VALID_BAKER_STATUSES = ['confirmed', 'in_progress', 'ready', 'picked_up'];
 
 // ---- Catalog ----
 
@@ -119,7 +119,7 @@ app.post('/api/orders', async (req, res) => {
   }
 });
 
-app.get('/api/orders', requireAuth, requireRole("STAFF", "ADMIN"), async (req, res) => {
+app.get('/api/orders', requireAuth, requireRole("STAFF", "MANAGER", "ADMIN"), async (req, res) => {
   const dateParam = typeof req.query.date === 'string' ? req.query.date : undefined;
   const day = dateParam ? new Date(dateParam) : new Date();
 
@@ -134,6 +134,9 @@ app.get('/api/orders', requireAuth, requireRole("STAFF", "ADMIN"), async (req, r
       pickupDate: {
         gte: start,
         lte: end,
+      },
+      status: {
+        in: ['confirmed', 'in_progress', 'ready'],
       },
     },
     include: {
@@ -151,11 +154,11 @@ app.get('/api/orders', requireAuth, requireRole("STAFF", "ADMIN"), async (req, r
   res.json(orders);
 });
 
-app.patch('/api/orders/:id/status', requireAuth, requireRole("STAFF", "ADMIN"), async (req, res) => {
+app.patch('/api/orders/:id/status', requireAuth, requireRole("STAFF", "MANAGER", "ADMIN"), async (req, res) => {
   const id = Number(req.params.id);
   const { status } = req.body ?? {};
 
-  if (!VALID_STATUSES.includes(status)) {
+  if (!VALID_BAKER_STATUSES.includes(status)) {
     return res.status(400).json({
       error: 'Невалиден статус.',
     });
@@ -175,6 +178,73 @@ app.patch('/api/orders/:id/status', requireAuth, requireRole("STAFF", "ADMIN"), 
 
   res.json(order);
 });
+
+app.patch(
+  '/api/orders/:orderId/items/:itemId/completed',
+  requireAuth,
+  requireRole("STAFF", "MANAGER", "ADMIN"),
+  async (req, res) => {
+    const orderId = Number(req.params.orderId);
+    const itemId = Number(req.params.itemId);
+    const { completedQuantity } = req.body ?? {};
+
+    if (
+      !Number.isInteger(orderId) ||
+      !Number.isInteger(itemId) ||
+      !Number.isInteger(completedQuantity)
+    ) {
+      return res.status(400).json({
+        error: 'Невалидно количество.',
+      });
+    }
+
+    try {
+      const item = await prisma.orderItem.findFirst({
+        where: { id: itemId, orderId },
+      });
+
+      if (!item) {
+        return res.status(404).json({
+          error: 'Тортата не е намерена в тази поръчка.',
+        });
+      }
+
+      if (completedQuantity < 0 || completedQuantity > item.quantity) {
+        return res.status(400).json({
+          error: 'Завършеното количество трябва да е между 0 и поръчаното количество.',
+        });
+      }
+
+      await prisma.orderItem.update({
+        where: { id: itemId },
+        data: { completedQuantity },
+      });
+
+      const order = await prisma.order.findUnique({
+        where: { id: orderId },
+        include: {
+          items: {
+            include: { cake: true },
+          },
+        },
+      });
+
+      if (!order) {
+        return res.status(404).json({
+          error: 'Поръчката не е намерена.',
+        });
+      }
+
+      return res.json(order);
+    } catch (error) {
+      console.error(error);
+
+      return res.status(500).json({
+        error: 'Неуспешно обновяване на завършеното количество.',
+      });
+    }
+  },
+);
 
 // ---- Cake Management ----
 

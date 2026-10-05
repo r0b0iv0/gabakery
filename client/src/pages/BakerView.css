@@ -29,5 +29,37 @@
 .order-card-header select { width: auto; padding: 6px 10px; }
 
 .order-cake { margin-bottom: 8px; }
+.order-cakes { display: grid; gap: 12px; margin: 16px 0; }
+.order-cake {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 0;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fff;
+}
+.order-cake-details { display: grid; gap: 6px; }
+.cake-progress-controls { display: flex; gap: 8px; }
+.progress-button {
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--cream);
+  color: var(--brown);
+  font: inherit;
+  font-size: 1.25rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+.progress-button:hover { border-color: var(--pink-dark); background: var(--pink); }
 .order-notes { font-size: 0.9rem; color: #8a6a55; margin-bottom: 8px; }
 .order-customer { font-size: 0.9rem; color: var(--brown); font-weight: 600; }
+
+@media (max-width: 520px) {
+  .order-cake { align-items: flex-start; }
+  .cake-progress-controls { flex-shrink: 0; }
+}

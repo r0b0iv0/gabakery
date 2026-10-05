@@ -34,8 +34,10 @@ export type Order = {
 
 export type OrderItem = {
   id: number;
+  orderId: number;
   cakeId: number;
   quantity: number;
+  completedQuantity: number;
   cake: Cake;
 };
 
@@ -97,4 +99,3 @@ export type OrderAvailability = {
     sufficient: boolean;
   }[];
 };
-

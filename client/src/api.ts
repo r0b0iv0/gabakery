@@ -71,6 +71,15 @@ export const api = {
   getOrdersByDate: (date: string) => request<Order[]>(`/orders?date=${date}`),
   updateOrderStatus: (id: number, status: Order['status']) =>
     request<Order>(`/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  updateOrderItemCompletedQuantity: (
+    orderId: number,
+    itemId: number,
+    completedQuantity: number,
+  ) =>
+    request<Order>(`/orders/${orderId}/items/${itemId}/completed`, {
+      method: 'PATCH',
+      body: JSON.stringify({ completedQuantity }),
+    }),
   getIngredients: () =>
     request<Ingredient[]>('/ingredients'),
 

@@ -35,10 +35,11 @@ model Order {
 }
 
 model OrderItem {
-  id       Int   @id @default(autoincrement())
-  orderId  Int
-  cakeId   Int
-  quantity Int
+  id                Int   @id @default(autoincrement())
+  orderId           Int
+  cakeId            Int
+  quantity          Int
+  completedQuantity Int   @default(0)
 
   order    Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
   cake     Cake  @relation(fields: [cakeId], references: [id])
