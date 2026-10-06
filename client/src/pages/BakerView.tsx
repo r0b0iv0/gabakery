@@ -1,10 +1,14 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import type { Order } from '../types';
+import type { Order, OrderItem } from '../types';
 import './BakerView.css';
 
 function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+function formatQuantity(quantity: number): string {
+  return String(Number(quantity.toFixed(2)));
 }
 
 const STATUS_LABELS: Partial<Record<Order['status'], string>> = {
@@ -26,6 +30,7 @@ export function BakerView() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRecipeItem, setSelectedRecipeItem] = useState<OrderItem | null>(null);
 
   useEffect(() => {
     setLoading(true);
@@ -37,6 +42,19 @@ export function BakerView() {
       .catch((e: Error) => setError(e.message))
       .finally(() => setLoading(false));
   }, [date]);
+
+  useEffect(() => {
+    if (!selectedRecipeItem) return;
+
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === 'Escape') {
+        setSelectedRecipeItem(null);
+      }
+    }
+
+    window.addEventListener('keydown', closeOnEscape);
+    return () => window.removeEventListener('keydown', closeOnEscape);
+  }, [selectedRecipeItem]);
 
   async function changeStatus(order: Order, status: Order['status']) {
     setError(null);
@@ -128,9 +146,13 @@ export function BakerView() {
                 {order.items.map((item) => (
                   <div className="order-cake" key={item.id}>
                     <div className="order-cake-details">
-                      <strong>
+                      <button
+                        type="button"
+                        className="cake-name-button"
+                        onClick={() => setSelectedRecipeItem(item)}
+                      >
                         {item.cake.emoji} {item.cake.name}
-                      </strong>
+                      </button>
                       <span>
                         Завършени: {item.completedQuantity} / {item.quantity}
                       </span>
@@ -179,6 +201,73 @@ export function BakerView() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {selectedRecipeItem && (
+        <div
+          className="recipe-modal-backdrop"
+          onClick={() => setSelectedRecipeItem(null)}
+        >
+          <section
+            className="recipe-modal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="recipe-modal-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="recipe-modal-header">
+              <div>
+                <h2 id="recipe-modal-title">
+                  {selectedRecipeItem.cake.emoji} {selectedRecipeItem.cake.name}
+                </h2>
+                <p>Рецепта за поръчка #{selectedRecipeItem.orderId}</p>
+              </div>
+              <button
+                type="button"
+                className="recipe-modal-close"
+                aria-label="Затвори рецептата"
+                autoFocus
+                onClick={() => setSelectedRecipeItem(null)}
+              >
+                ×
+              </button>
+            </div>
+
+            {selectedRecipeItem.cake.recipe ? (
+              <div className="recipe-modal-content">
+                <h3>{selectedRecipeItem.cake.recipe.name}</h3>
+                {selectedRecipeItem.cake.recipe.description && (
+                  <p className="recipe-description">
+                    {selectedRecipeItem.cake.recipe.description}
+                  </p>
+                )}
+
+                <p className="recipe-batch-size">
+                  Количество в поръчката: {selectedRecipeItem.quantity} бр.
+                </p>
+
+                <div className="recipe-ingredient-list">
+                  {selectedRecipeItem.cake.recipe.ingredients.map((item) => (
+                    <div className="recipe-ingredient-row" key={item.id}>
+                      <span>{item.ingredient.name}</span>
+                      <span>
+                        {formatQuantity(item.quantity)} {item.ingredient.unit} / торта
+                      </span>
+                      <strong>
+                        {formatQuantity(item.quantity * selectedRecipeItem.quantity)}{' '}
+                        {item.ingredient.unit} общо
+                      </strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="recipe-empty-state">
+                Няма добавена рецепта за тази торта.
+              </p>
+            )}
+          </section>
         </div>
       )}
     </div>

@@ -142,7 +142,17 @@ app.get('/api/orders', requireAuth, requireRole("STAFF", "MANAGER", "ADMIN"), as
     include: {
       items: {
         include: {
-          cake: true,
+          cake: {
+            include: {
+              recipe: {
+                include: {
+                  ingredients: {
+                    include: { ingredient: true },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -170,7 +180,17 @@ app.patch('/api/orders/:id/status', requireAuth, requireRole("STAFF", "MANAGER",
     include: {
       items: {
         include: {
-          cake: true,
+          cake: {
+            include: {
+              recipe: {
+                include: {
+                  ingredients: {
+                    include: { ingredient: true },
+                  },
+                },
+              },
+            },
+          },
         },
       },
     },
@@ -224,7 +244,19 @@ app.patch(
         where: { id: orderId },
         include: {
           items: {
-            include: { cake: true },
+            include: {
+              cake: {
+                include: {
+                  recipe: {
+                    include: {
+                      ingredients: {
+                        include: { ingredient: true },
+                      },
+                    },
+                  },
+                },
+              },
+            },
           },
         },
       });

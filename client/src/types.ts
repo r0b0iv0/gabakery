@@ -4,7 +4,24 @@ export interface Cake {
   description: string;
   price: number;
   emoji: string;
+  recipe?: CakeRecipe | null;
 }
+
+export type CakeRecipe = {
+  id: number;
+  name: string;
+  description: string | null;
+  ingredients: {
+    id: number;
+    ingredientId: number;
+    quantity: number;
+    ingredient: {
+      id: number;
+      name: string;
+      unit: string;
+    };
+  }[];
+};
 
 
 export type OrderPayload = {

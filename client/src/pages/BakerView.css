@@ -42,6 +42,22 @@
   background: #fff;
 }
 .order-cake-details { display: grid; gap: 6px; }
+.cake-name-button {
+  width: fit-content;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--brown-dark);
+  font: inherit;
+  font-weight: 700;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 3px;
+  cursor: pointer;
+}
+.cake-name-button:hover,
+.cake-name-button:focus-visible { text-decoration-color: currentColor; }
 .cake-progress-controls { display: flex; gap: 8px; }
 .progress-button {
   width: 40px;
@@ -59,7 +75,76 @@
 .order-notes { font-size: 0.9rem; color: #8a6a55; margin-bottom: 8px; }
 .order-customer { font-size: 0.9rem; color: var(--brown); font-weight: 600; }
 
+.recipe-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgb(34 24 18 / 55%);
+}
+.recipe-modal {
+  width: min(680px, 100%);
+  max-height: min(85vh, 760px);
+  overflow: auto;
+  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--cream);
+  box-shadow: 0 18px 60px rgb(0 0 0 / 24%);
+}
+.recipe-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+.recipe-modal-header h2 {
+  margin: 0;
+  color: var(--brown-dark);
+}
+.recipe-modal-header p,
+.recipe-description,
+.recipe-batch-size { margin: 6px 0 0; color: #8a6a55; }
+.recipe-modal-close {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: white;
+  color: var(--brown);
+  font-size: 1.6rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.recipe-modal-content h3 { margin: 0; color: var(--brown); }
+.recipe-batch-size { margin: 14px 0; font-weight: 600; }
+.recipe-ingredient-list { display: grid; gap: 8px; }
+.recipe-ingredient-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: white;
+  color: var(--brown);
+}
+.recipe-ingredient-row strong { text-align: right; }
+.recipe-empty-state { margin: 0; color: #8a6a55; }
+
 @media (max-width: 520px) {
   .order-cake { align-items: flex-start; }
   .cake-progress-controls { flex-shrink: 0; }
+  .recipe-modal { padding: 18px; }
+  .recipe-ingredient-row {
+    grid-template-columns: 1fr auto;
+    gap: 6px 10px;
+  }
+  .recipe-ingredient-row span:first-child { grid-column: 1 / -1; font-weight: 700; }
+  .recipe-ingredient-row strong { text-align: right; }
 }
