@@ -4,6 +4,7 @@ export interface Cake {
   description: string;
   price: number;
   emoji: string;
+  imageUrl: string | null;
   recipe?: CakeRecipe | null;
 }
 

@@ -1,10 +1,16 @@
 import type { Cake, CreateCakePayload, CreateIngredientPayload, Ingredient, Order, OrderAvailability, OrderPayload, User } from './types';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
+  const headers = new Headers(options?.headers);
+
+  if (!(options?.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
   const res = await fetch(`/api${path}`, {
     credentials: 'include',
-    headers: { 'Content-Type': 'application/json' },
     ...options,
+    headers,
   });
 
   if (!res.ok) {
@@ -64,6 +70,7 @@ export const api = {
 
 
   getCakes: () => request<Cake[]>('/cakes'),
+  getCake: (id: number) => request<Cake>(`/cakes/${id}`),
   createOrder: (payload: OrderPayload) =>
     request<Order>('/orders', { method: 'POST', body: JSON.stringify(payload) }),
 
@@ -83,11 +90,23 @@ export const api = {
   getIngredients: () =>
     request<Ingredient[]>('/ingredients'),
 
-  createCake: (payload: CreateCakePayload) =>
-    request<Cake>('/cakes', {
+  createCake: (payload: CreateCakePayload, image?: File | null) => {
+    if (image) {
+      const formData = new FormData();
+      formData.append('payload', JSON.stringify(payload));
+      formData.append('image', image);
+
+      return request<Cake>('/cakes', {
+        method: 'POST',
+        body: formData,
+      });
+    }
+
+    return request<Cake>('/cakes', {
       method: 'POST',
       body: JSON.stringify(payload),
-    }),
+    });
+  },
 
   createIngredient: (payload: CreateIngredientPayload) =>
     request<Ingredient>('/ingredients', {

@@ -1,127 +1,5 @@
-.customer-flow-page {
-  max-width: 1000px;
-}
-
-.customer-flow-page h1 {
-  color: var(--brown);
-}
-
-.cart {
-  margin-top: 28px;
-  background: white;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 20px;
-}
-
-.cart-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 16px;
-}
-
-.cart-header h2 {
-  margin: 0;
-  color: var(--brown);
-}
-
-.cart-header span {
-  color: #8a6a55;
-  font-size: 0.95rem;
-}
-
-.cart-items {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.cart-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 20px;
-  padding: 14px 0;
-  border-bottom: 1px solid var(--border);
-}
-
-.cart-item:last-child {
-  border-bottom: none;
-}
-
-.cart-item-info {
-  min-width: 0;
-}
-
-.cart-item-name {
-  font-weight: 700;
-  color: var(--brown);
-}
-
-.cart-item-price {
-  margin-top: 4px;
-  color: #8a6a55;
-  font-size: 0.9rem;
-}
-
-.cart-item-actions {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-}
-
-.quantity-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.quantity-controls span {
-  min-width: 24px;
-  text-align: center;
-  font-weight: 600;
-}
-
-.quantity-button {
-  width: 32px;
-  height: 32px;
-  padding: 0;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  background: white;
-  color: var(--brown);
-  font-size: 1.1rem;
-  cursor: pointer;
-}
-
-.quantity-button:hover {
-  border-color: var(--pink);
-  background: #fff0f4;
-}
-
-.remove-button {
-  border: none;
-  background: none;
-  color: var(--pink-dark);
-  font-family: inherit;
-  cursor: pointer;
-}
-
-.remove-button:hover {
-  text-decoration: underline;
-}
-
-.cart-total {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 2px solid var(--border);
-  color: var(--brown);
-  font-size: 1.1rem;
-}
+.customer-flow-page { max-width: 1000px; }
+.customer-flow-page h1 { color: var(--brown); }
 
 .order-summary {
   display: flex;
@@ -151,33 +29,10 @@
   text-align: center;
 }
 
-.success h1 {
-  color: var(--brown);
-}
-
-.success p {
-  color: #8a6a55;
-  line-height: 1.6;
-}
-
-.success-emoji {
-  font-size: 4rem;
-  margin-bottom: 10px;
-}
+.success h1 { color: var(--brown); }
+.success p { color: #8a6a55; line-height: 1.6; }
+.success-emoji { margin-bottom: 10px; font-size: 4rem; }
 
 @media (max-width: 650px) {
-  .cart-item {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .cart-item-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .summary-item {
-    flex-direction: column;
-    gap: 2px;
-  }
+  .summary-item { flex-direction: column; gap: 2px; }
 }

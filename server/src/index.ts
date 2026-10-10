@@ -5,6 +5,12 @@ import cookieParser from "cookie-parser";
 import { requireAuth } from './middleware/requireAuth';
 import { requireRole } from './middleware/requireRole';
 import authRouter from "./auth/auth.routes"
+import multer from 'multer';
+import { randomUUID } from 'crypto';
+import { mkdirSync } from 'fs';
+import { unlink, writeFile } from 'fs/promises';
+import path from 'path';
+import type { NextFunction, Request, Response } from 'express';
 
 const app = express();
 app.use(cookieParser());
@@ -16,6 +22,72 @@ app.use(express.json());
 app.use("/api/auth", authRouter);
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
+const UPLOAD_DIR = process.env.UPLOAD_DIR || path.resolve(__dirname, '../uploads');
+const MAX_CAKE_IMAGE_SIZE = 5 * 1024 * 1024;
+
+mkdirSync(UPLOAD_DIR, { recursive: true });
+
+app.use('/api/uploads', express.static(UPLOAD_DIR, {
+  maxAge: '7d',
+  immutable: true,
+}));
+
+const cakeImageUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    files: 1,
+    fileSize: MAX_CAKE_IMAGE_SIZE,
+  },
+});
+
+function handleCakeImageUpload(req: Request, res: Response, next: NextFunction) {
+  cakeImageUpload.single('image')(req, res, (error) => {
+    if (!error) {
+      return next();
+    }
+
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({
+        error: 'Снимката трябва да е до 5 MB.',
+      });
+    }
+
+    return res.status(400).json({
+      error: 'Неуспешно качване на снимката.',
+    });
+  });
+}
+
+function getCakeImageExtension(file: Express.Multer.File): string | null {
+  const bytes = file.buffer;
+
+  if (
+    file.mimetype === 'image/jpeg' &&
+    bytes.length >= 3 &&
+    bytes[0] === 0xff &&
+    bytes[1] === 0xd8 &&
+    bytes[2] === 0xff
+  ) {
+    return 'jpg';
+  }
+
+  if (
+    file.mimetype === 'image/png' &&
+    bytes.subarray(0, 8).equals(Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]))
+  ) {
+    return 'png';
+  }
+
+  if (
+    file.mimetype === 'image/webp' &&
+    bytes.toString('ascii', 0, 4) === 'RIFF' &&
+    bytes.toString('ascii', 8, 12) === 'WEBP'
+  ) {
+    return 'webp';
+  }
+
+  return null;
+}
 
 
 const VALID_BAKER_STATUSES = ['confirmed', 'in_progress', 'ready', 'picked_up'];
@@ -25,6 +97,22 @@ const VALID_BAKER_STATUSES = ['confirmed', 'in_progress', 'ready', 'picked_up'];
 app.get('/api/cakes', async (_req, res) => {
   const cakes = await prisma.cake.findMany({ orderBy: { id: 'asc' } });
   res.json(cakes);
+});
+
+app.get('/api/cakes/:id', async (req, res) => {
+  const id = Number(req.params.id);
+
+  if (!Number.isInteger(id)) {
+    return res.status(400).json({ error: 'Невалидна торта.' });
+  }
+
+  const cake = await prisma.cake.findUnique({ where: { id } });
+
+  if (!cake) {
+    return res.status(404).json({ error: 'Тортата не е намерена.' });
+  }
+
+  return res.json(cake);
 });
 
 
@@ -284,14 +372,27 @@ app.post(
   '/api/cakes',
   requireAuth,
   requireRole("MANAGER", "ADMIN"),
+  handleCakeImageUpload,
   async (req, res) => {
+    let payload: any;
+
+    try {
+      payload = req.file
+        ? JSON.parse(req.body.payload ?? 'null')
+        : req.body ?? {};
+    } catch {
+      return res.status(400).json({
+        error: 'Невалидни данни за тортата.',
+      });
+    }
+
     const {
       name,
       description,
       price,
       emoji,
       recipe,
-    } = req.body ?? {};
+    } = payload ?? {};
 
     if (!name || !description || price === undefined || !recipe?.name) {
       return res.status(400).json({
@@ -299,13 +400,35 @@ app.post(
       });
     }
 
+    const imageExtension = req.file
+      ? getCakeImageExtension(req.file)
+      : null;
+
+    if (req.file && !imageExtension) {
+      return res.status(400).json({
+        error: 'Изберете валидна JPG, PNG или WebP снимка.',
+      });
+    }
+
+    let savedImagePath: string | null = null;
+
     try {
+      let imageUrl: string | null = null;
+
+      if (req.file && imageExtension) {
+        const fileName = `${randomUUID()}.${imageExtension}`;
+        savedImagePath = path.join(UPLOAD_DIR, fileName);
+        imageUrl = `/api/uploads/${fileName}`;
+        await writeFile(savedImagePath, req.file.buffer, { flag: 'wx' });
+      }
+
       const cake = await prisma.cake.create({
         data: {
           name,
           description,
           price: Number(price),
           emoji: emoji ?? "🎂",
+          imageUrl,
 
           recipe: {
             create: {
@@ -337,6 +460,11 @@ app.post(
       res.status(201).json(cake);
     } catch (error) {
       console.error(error);
+
+      if (savedImagePath) {
+        await unlink(savedImagePath).catch(() => undefined);
+      }
+
       res.status(500).json({
         error: 'Неуспешно създаване на тортата.',
       });

@@ -1,0 +1,63 @@
+.cake-detail-page { max-width: 1100px; }
+
+.cake-detail-back {
+  margin-bottom: 18px;
+  padding: 8px 0;
+  border: 0;
+  background: none;
+  color: var(--brown);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.cake-detail-back:hover { color: var(--pink-dark); }
+
+.cake-detail-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.9fr);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: white;
+  box-shadow: 0 8px 28px rgb(74 42 27 / 8%);
+}
+
+.cake-detail-image {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 380px;
+  object-fit: cover;
+}
+
+.cake-detail-image-fallback {
+  display: grid;
+  place-items: center;
+  background: #fff8f0;
+  color: var(--brown);
+  font-size: 7rem;
+}
+
+.cake-detail-info { align-self: center; padding: 36px; }
+.cake-detail-eyebrow { margin: 0 0 8px; color: var(--pink-dark); font-weight: 700; }
+.cake-detail-info h1 { margin: 0; color: var(--brown); }
+.cake-detail-description { color: #8a6a55; line-height: 1.6; }
+.cake-detail-price { margin: 20px 0; color: var(--brown); font-size: 1.5rem; font-weight: 700; }
+
+.cake-detail-order-controls {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.cake-detail-quantity { display: grid; gap: 8px; color: var(--brown); font-weight: 600; }
+.cake-detail-quantity .quantity-controls { gap: 10px; }
+.cake-added-message { margin: 14px 0 0; color: #28743c; font-weight: 600; }
+
+@media (max-width: 720px) {
+  .cake-detail-card { grid-template-columns: 1fr; }
+  .cake-detail-image { height: 300px; min-height: 0; }
+  .cake-detail-info { padding: 24px; }
+}

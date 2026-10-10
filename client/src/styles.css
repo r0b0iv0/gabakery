@@ -67,17 +67,45 @@ textarea { min-height: 70px; resize: vertical; }
 }
 
 .cake-card {
+  display: flex;
+  flex-direction: column;
   background: white;
   border: 2px solid var(--border);
   border-radius: 14px;
-  padding: 16px;
+  overflow: hidden;
   text-align: left;
-  cursor: pointer;
   transition: 0.15s ease;
   font-family: inherit;
 }
 .cake-card:hover { border-color: var(--pink); transform: translateY(-2px); }
 .cake-card.selected { border-color: var(--pink-dark); background: #fff0f4; }
+.cake-card-link { display: block; flex: 1; padding: 0 16px 14px; color: inherit; }
+.cake-card-image {
+  display: block;
+  width: calc(100% + 32px);
+  height: 170px;
+  margin: 0 -16px 12px;
+  object-fit: cover;
+}
+.cake-card-image-fallback {
+  display: grid;
+  place-items: center;
+  background: #fff8f0;
+  color: var(--brown);
+  font-size: 3.5rem;
+}
+.cake-card-order {
+  margin: 0 16px 16px;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 9px;
+  background: var(--pink-dark);
+  color: white;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+.cake-card-order:hover { background: var(--brown); }
 
 .custom-card { display: flex; flex-direction: column; justify-content: center; align-items: flex-start; }
 
@@ -128,4 +156,3 @@ button.secondary { background: white; border: 1px solid var(--border); color: va
   border-radius: 8px;
   margin-bottom: 16px;
 }
-

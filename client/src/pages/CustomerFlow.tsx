@@ -1,15 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { api } from '../api';
 import { CakeCard } from '../components/CakeCard';
+import { CartSummary } from '../components/CartSummary';
+import { useCart } from '../contexts/CartContext';
 import type { Cake, Order } from '../types';
 import './CustomerFlow.css';
 
 type Step = 'select' | 'details' | 'success';
-
-type CartItem = {
-  cake: Cake;
-  quantity: number;
-};
 
 function tomorrowISO(): string {
   const d = new Date();
@@ -18,9 +16,13 @@ function tomorrowISO(): string {
 }
 
 export function CustomerFlow() {
-  const [step, setStep] = useState<Step>('select');
+  const location = useLocation();
+  const { cart, cartTotal, addToCart, clearCart } = useCart();
+  const routeState = location.state as { checkout?: boolean } | null;
+  const [step, setStep] = useState<Step>(() =>
+    routeState?.checkout && cart.length > 0 ? 'details' : 'select',
+  );
   const [cakes, setCakes] = useState<Cake[]>([]);
-  const [cart, setCart] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -40,58 +42,7 @@ export function CustomerFlow() {
       .finally(() => setLoading(false));
   }, []);
 
-  const cartTotal = useMemo(() => {
-    return cart.reduce(
-      (total, item) => total + item.cake.price * item.quantity,
-      0
-    );
-  }, [cart]);
-
   const canGoToDetails = cart.length > 0;
-
-  function addToCart(cake: Cake) {
-    setCart(current => {
-      const existing = current.find(item => item.cake.id === cake.id);
-
-      if (existing) {
-        return current.map(item =>
-          item.cake.id === cake.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        );
-      }
-
-      return [...current, { cake, quantity: 1 }];
-    });
-  }
-
-  function increaseQuantity(cakeId: number) {
-    setCart(current =>
-      current.map(item =>
-        item.cake.id === cakeId
-          ? { ...item, quantity: item.quantity + 1 }
-          : item
-      )
-    );
-  }
-
-  function decreaseQuantity(cakeId: number) {
-    setCart(current =>
-      current
-        .map(item =>
-          item.cake.id === cakeId
-            ? { ...item, quantity: item.quantity - 1 }
-            : item
-        )
-        .filter(item => item.quantity > 0)
-    );
-  }
-
-  function removeFromCart(cakeId: number) {
-    setCart(current =>
-      current.filter(item => item.cake.id !== cakeId)
-    );
-  }
 
   function goToDetailsFromSelect() {
     if (cart.length > 0) {
@@ -137,7 +88,7 @@ export function CustomerFlow() {
 
   function startOver() {
     setStep('select');
-    setCart([]);
+    clearCart();
     setCustomerName('');
     setPhone('');
     setPickupDate(tomorrowISO());
@@ -176,67 +127,7 @@ export function CustomerFlow() {
             ))}
           </div>
 
-          {cart.length > 0 && (
-            <div className="cart">
-              <div className="cart-header">
-                <h2>Кошница</h2>
-                <span>
-                  {cart.reduce((total, item) => total + item.quantity, 0)} бр.
-                </span>
-              </div>
-
-              <div className="cart-items">
-                {cart.map(item => (
-                  <div className="cart-item" key={item.cake.id}>
-                    <div className="cart-item-info">
-                      <div className="cart-item-name">
-                        {item.cake.emoji} {item.cake.name}
-                      </div>
-
-                      <div className="cart-item-price">
-                        {item.cake.price.toFixed(2)} лв. / бр.
-                      </div>
-                    </div>
-
-                    <div className="cart-item-actions">
-                      <div className="quantity-controls">
-                        <button
-                          type="button"
-                          className="quantity-button"
-                          onClick={() => decreaseQuantity(item.cake.id)}
-                        >
-                          -
-                        </button>
-
-                        <span>{item.quantity}</span>
-
-                        <button
-                          type="button"
-                          className="quantity-button"
-                          onClick={() => increaseQuantity(item.cake.id)}
-                        >
-                          +
-                        </button>
-                      </div>
-
-                      <button
-                        type="button"
-                        className="remove-button"
-                        onClick={() => removeFromCart(item.cake.id)}
-                      >
-                        Премахни
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="cart-total">
-                <span>Общо</span>
-                <strong>{cartTotal.toFixed(2)} лв.</strong>
-              </div>
-            </div>
-          )}
+          <CartSummary />
 
           <div className="actions">
             <button

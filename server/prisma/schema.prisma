@@ -13,6 +13,7 @@ model Cake {
   description String
   price       Float
   emoji       String   @default("🎂")
+  imageUrl    String?
 
   orderItems  OrderItem[]
   recipe      Recipe?
@@ -129,5 +130,4 @@ model PasswordResetToken {
 
   @@index([userId])
 }
-
 

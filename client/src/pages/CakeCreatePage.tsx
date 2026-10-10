@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../api';
 import type { Ingredient } from '../types';
+import './CakeCreatePage.css';
 
 type Step = 'create' | 'success';
 
@@ -23,6 +24,8 @@ export function CakeCreatePage() {
     const [description, setDescription] = useState('');
     const [price, setPrice] = useState('');
     const [emoji, setEmoji] = useState('🎂');
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreviewUrl, setImagePreviewUrl] = useState('');
 
     const [recipeName, setRecipeName] = useState('');
     const [recipeDescription, setRecipeDescription] = useState('');
@@ -39,6 +42,18 @@ export function CakeCreatePage() {
             .then(setIngredients)
             .catch((err) => setError(err.message));
     }, []);
+
+    useEffect(() => {
+        if (!imageFile) {
+            setImagePreviewUrl('');
+            return;
+        }
+
+        const previewUrl = URL.createObjectURL(imageFile);
+        setImagePreviewUrl(previewUrl);
+
+        return () => URL.revokeObjectURL(previewUrl);
+    }, [imageFile]);
 
     function addIngredient() {
         if (ingredients.length === 0) return;
@@ -106,7 +121,7 @@ export function CakeCreatePage() {
                         quantity: Number(item.quantity),
                     })),
                 },
-            });
+            }, imageFile);
 
             setStep("success")
         } catch (err) {
@@ -122,6 +137,7 @@ export function CakeCreatePage() {
         setName('');
         setDescription('');
         setEmoji('🎂');
+        setImageFile(null);
         setPrice('');
         setRecipeName('');
         setRecipeDescription('');
@@ -171,6 +187,47 @@ export function CakeCreatePage() {
                             onChange={(e) => setEmoji(e.target.value)}
                             maxLength={4}
                         />
+
+                        <label className="field-label" htmlFor="cakeImage">
+                            Снимка на тортата (по желание)
+                        </label>
+                        <input
+                            id="cakeImage"
+                            type="file"
+                            accept="image/jpeg,image/png,image/webp"
+                            onChange={(event) => {
+                                const file = event.target.files?.[0] ?? null;
+
+                                if (!file) {
+                                    setImageFile(null);
+                                    return;
+                                }
+
+                                if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+                                    setError('Изберете JPG, PNG или WebP снимка.');
+                                    setImageFile(null);
+                                    event.target.value = '';
+                                    return;
+                                }
+
+                                if (file.size > 5 * 1024 * 1024) {
+                                    setError('Снимката трябва да е до 5 MB.');
+                                    setImageFile(null);
+                                    event.target.value = '';
+                                    return;
+                                }
+
+                                setError('');
+                                setImageFile(file);
+                            }}
+                        />
+                        {imagePreviewUrl && (
+                            <img
+                                className="cake-image-preview"
+                                src={imagePreviewUrl}
+                                alt="Преглед на снимката на тортата"
+                            />
+                        )}
 
                         <h2>Рецепта</h2>
 
@@ -283,7 +340,7 @@ export function CakeCreatePage() {
                     <p>
                         Можеш да откриеш своята торта на страницата <strong> Поръчай торта</strong>
                     </p>
-                    <button className="primary" onClick={startOver}>Нова поръчка</button>
+                    <button className="primary" onClick={startOver}>Нова торта</button>
                 </div>
             )}
         </div>
