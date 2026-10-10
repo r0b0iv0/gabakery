@@ -472,10 +472,17 @@ app.patch(
   async (req, res) => {
     const id = Number(req.params.id);
     const { quantity } = req.body ?? {};
+    const action = req.body?.action ?? 'add';
+    const amount = Number(quantity);
 
-    if (quantity === undefined || Number(quantity) <= 0) {
+    if (
+      !Number.isInteger(id) ||
+      !Number.isFinite(amount) ||
+      amount <= 0 ||
+      !['add', 'remove'].includes(action)
+    ) {
       return res.status(400).json({
-        error: 'Количеството трябва да бъде по-голямо от 0.',
+        error: 'Невалидно количество или операция.',
       });
     }
 
@@ -491,30 +498,49 @@ app.patch(
         });
       }
 
-      const inventory = await prisma.inventory.upsert({
-        where: {
-          ingredientId: id,
-        },
-        update: {
-          quantity: {
-            increment: Number(quantity),
+      if (action === 'add') {
+        const inventory = await prisma.inventory.upsert({
+          where: { ingredientId: id },
+          update: {
+            quantity: { increment: amount },
           },
-        },
-        create: {
-          ingredientId: id,
-          quantity: Number(quantity),
-          lowStockThreshold: 0,
-        },
-        include: {
-          ingredient: {
-            include: {
-              inventory: true,
+          create: {
+            ingredientId: id,
+            quantity: amount,
+            lowStockThreshold: 0,
+          },
+          include: {
+            ingredient: {
+              include: { inventory: true },
             },
           },
+        });
+
+        return res.json(inventory.ingredient);
+      }
+
+      const updateResult = await prisma.inventory.updateMany({
+        where: {
+          ingredientId: id,
+          quantity: { gte: amount },
+        },
+        data: {
+          quantity: { decrement: amount },
         },
       });
 
-      res.json(inventory.ingredient);
+      if (updateResult.count === 0) {
+        return res.status(400).json({
+          error: 'Наличността не може да бъде по-малка от 0.',
+        });
+      }
+
+      const updatedIngredient = await prisma.ingredient.findUnique({
+        where: { id },
+        include: { inventory: true },
+      });
+
+      return res.json(updatedIngredient);
     } catch (error) {
       console.error(error);
 

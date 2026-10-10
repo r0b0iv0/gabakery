@@ -95,10 +95,14 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
-  addIngredientStock: (id: number, quantity: number) =>
+  adjustIngredientStock: (
+    id: number,
+    quantity: number,
+    action: 'add' | 'remove',
+  ) =>
     request<Ingredient>(`/ingredients/${id}/stock`, {
       method: 'PATCH',
-      body: JSON.stringify({ quantity }),
+      body: JSON.stringify({ quantity, action }),
     }),
 
   getManagementOrders: () =>

@@ -10,12 +10,13 @@ export function IngredientsPage() {
 
     const [showLowStock, setShowLowStock] = useState(false);
     const [showAddIngredient, setShowAddIngredient] = useState(false);
-    const [showAddStock, setShowAddStock] = useState(false);
+    const [showStockAdjustment, setShowStockAdjustment] = useState(false);
 
     const [selectedIngredient, setSelectedIngredient] =
         useState<Ingredient | null>(null);
 
     const [stockAmount, setStockAmount] = useState('');
+    const [stockAction, setStockAction] = useState<'add' | 'remove'>('add');
 
     const [name, setName] = useState('');
     const [unit, setUnit] = useState('kg');
@@ -80,22 +81,39 @@ export function IngredientsPage() {
         }
     }
 
-    async function handleAddStock() {
-        if (!selectedIngredient || !stockAmount) {
+    async function handleStockAdjustment() {
+        const amount = Number(stockAmount);
+
+        if (
+            !selectedIngredient ||
+            stockAmount === '' ||
+            !Number.isFinite(amount) ||
+            amount <= 0
+        ) {
+            setError('Въведете количество, по-голямо от 0.');
+            return;
+        }
+
+        const currentQuantity = selectedIngredient.inventory?.quantity ?? 0;
+
+        if (stockAction === 'remove' && amount > currentQuantity) {
+            setError('Количеството за премахване надвишава наличността.');
             return;
         }
 
         try {
             setError('');
 
-            await api.addIngredientStock(
+            await api.adjustIngredientStock(
                 selectedIngredient.id,
-                Number(stockAmount)
+                amount,
+                stockAction,
             );
 
             setStockAmount('');
             setSelectedIngredient(null);
-            setShowAddStock(false);
+            setShowStockAdjustment(false);
+            setStockAction('add');
 
             await loadIngredients();
         } catch (err) {
@@ -272,13 +290,16 @@ export function IngredientsPage() {
                                                 type="button"
                                                 className="secondary"
                                                 onClick={() => {
+                                                    setError('');
+                                                    setStockAmount('');
+                                                    setStockAction('add');
                                                     setSelectedIngredient(
                                                         ingredient
                                                     );
-                                                    setShowAddStock(true);
+                                                    setShowStockAdjustment(true);
                                                 }}
                                             >
-                                                Добави наличност
+                                                Промени наличност
                                             </button>
                                         </td>
                                     </tr>
@@ -381,10 +402,35 @@ export function IngredientsPage() {
                 </div>
             )}
 
-            {showAddStock && selectedIngredient && (
+            {showStockAdjustment && selectedIngredient && (
                 <div className="modal-overlay">
                     <div className="modal">
-                        <h2>Добави наличност</h2>
+                        <h2>Промени наличност</h2>
+
+                        <div className="stock-adjustment-toggle" role="group" aria-label="Операция с наличността">
+                            <button
+                                type="button"
+                                className={stockAction === 'add' ? 'selected' : ''}
+                                aria-pressed={stockAction === 'add'}
+                                onClick={() => {
+                                    setStockAction('add');
+                                    setError('');
+                                }}
+                            >
+                                Добави
+                            </button>
+                            <button
+                                type="button"
+                                className={stockAction === 'remove' ? 'selected' : ''}
+                                aria-pressed={stockAction === 'remove'}
+                                onClick={() => {
+                                    setStockAction('remove');
+                                    setError('');
+                                }}
+                            >
+                                Премахни
+                            </button>
+                        </div>
 
                         <div className="stock-modal-info">
                             <strong>
@@ -400,18 +446,41 @@ export function IngredientsPage() {
                         </div>
 
                         <label className="field-label">
-                            Количество за добавяне
+                            {stockAction === 'add'
+                                ? 'Количество за добавяне'
+                                : 'Количество за премахване'}
                         </label>
 
                         <input
                             type="number"
-                            min="0"
+                            min="0.01"
+                            step="any"
                             value={stockAmount}
                             onChange={e =>
                                 setStockAmount(e.target.value)
                             }
                             placeholder={selectedIngredient.unit}
                         />
+
+                        {stockAmount !== '' && Number.isFinite(Number(stockAmount)) && Number(stockAmount) > 0 && (
+                            <div className="stock-adjustment-preview">
+                                <span>Нова наличност:</span>
+                                <strong>
+                                    {stockAction === 'add'
+                                        ? (selectedIngredient.inventory?.quantity ?? 0) + Number(stockAmount)
+                                        : (selectedIngredient.inventory?.quantity ?? 0) - Number(stockAmount)}{' '}
+                                    {selectedIngredient.unit}
+                                </strong>
+                            </div>
+                        )}
+
+                        {stockAction === 'remove' &&
+                            stockAmount !== '' &&
+                            Number(stockAmount) > (selectedIngredient.inventory?.quantity ?? 0) && (
+                                <p className="stock-adjustment-error">
+                                    Количеството за премахване надвишава наличността.
+                                </p>
+                            )}
 
                         <div className="actions">
                             <button
@@ -420,7 +489,8 @@ export function IngredientsPage() {
                                 onClick={() => {
                                     setStockAmount('');
                                     setSelectedIngredient(null);
-                                    setShowAddStock(false);
+                                    setShowStockAdjustment(false);
+                                    setStockAction('add');
                                 }}
                             >
                                 Отказ
@@ -429,9 +499,16 @@ export function IngredientsPage() {
                             <button
                                 type="button"
                                 className="primary"
-                                onClick={handleAddStock}
+                                onClick={handleStockAdjustment}
+                                disabled={
+                                    stockAmount === '' ||
+                                    !Number.isFinite(Number(stockAmount)) ||
+                                    Number(stockAmount) <= 0 ||
+                                    (stockAction === 'remove' &&
+                                        Number(stockAmount) > (selectedIngredient.inventory?.quantity ?? 0))
+                                }
                             >
-                                Добави
+                                {stockAction === 'add' ? 'Добави' : 'Премахни'}
                             </button>
                         </div>
                     </div>
