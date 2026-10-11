@@ -1,5 +1,6 @@
 import type { Cake } from '../types';
 import { Link } from 'react-router-dom';
+import { formatCurrency } from '../utils/formatCurrency';
 
 interface Props {
   cake: Cake;
@@ -20,7 +21,7 @@ export function CakeCard({ cake, selected, onSelect }: Props) {
         )}
         <div className="cake-name">{cake.name}</div>
         <div className="cake-desc">{cake.description}</div>
-        <div className="cake-price">{cake.price.toFixed(2)} лв.</div>
+        <div className="cake-price">От {formatCurrency(cake.price)} · 8 парчета</div>
       </Link>
       <button type="button" className="cake-card-order" onClick={onSelect}>
         Поръчай

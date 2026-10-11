@@ -1,19 +1,20 @@
 import { createContext, useContext, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Cake } from '../types';
+import type { Cake, CakePieces } from '../types';
 
 export type CartItem = {
   cake: Cake;
   quantity: number;
+  pieces: CakePieces;
 };
 
 type CartContextValue = {
   cart: CartItem[];
   cartTotal: number;
-  addToCart: (cake: Cake, quantity?: number) => void;
-  increaseQuantity: (cakeId: number) => void;
-  decreaseQuantity: (cakeId: number) => void;
-  removeFromCart: (cakeId: number) => void;
+  addToCart: (cake: Cake, quantity?: number, pieces?: CakePieces) => void;
+  increaseQuantity: (cakeId: number, pieces: CakePieces) => void;
+  decreaseQuantity: (cakeId: number, pieces: CakePieces) => void;
+  removeFromCart: (cakeId: number, pieces: CakePieces) => void;
   clearCart: () => void;
 };
 
@@ -22,37 +23,39 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [cart, setCart] = useState<CartItem[]>([]);
 
-  function addToCart(cake: Cake, quantity = 1) {
+  function addToCart(cake: Cake, quantity = 1, pieces: CakePieces = 8) {
     setCart((current) => {
-      const existing = current.find((item) => item.cake.id === cake.id);
+      const existing = current.find(
+        (item) => item.cake.id === cake.id && item.pieces === pieces,
+      );
 
       if (existing) {
         return current.map((item) =>
-          item.cake.id === cake.id
+          item.cake.id === cake.id && item.pieces === pieces
             ? { ...item, cake, quantity: item.quantity + quantity }
             : item,
         );
       }
 
-      return [...current, { cake, quantity }];
+      return [...current, { cake, quantity, pieces }];
     });
   }
 
-  function increaseQuantity(cakeId: number) {
+  function increaseQuantity(cakeId: number, pieces: CakePieces) {
     setCart((current) =>
       current.map((item) =>
-        item.cake.id === cakeId
+        item.cake.id === cakeId && item.pieces === pieces
           ? { ...item, quantity: item.quantity + 1 }
           : item,
       ),
     );
   }
 
-  function decreaseQuantity(cakeId: number) {
+  function decreaseQuantity(cakeId: number, pieces: CakePieces) {
     setCart((current) =>
       current
         .map((item) =>
-          item.cake.id === cakeId
+          item.cake.id === cakeId && item.pieces === pieces
             ? { ...item, quantity: item.quantity - 1 }
             : item,
         )
@@ -60,12 +63,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
     );
   }
 
-  function removeFromCart(cakeId: number) {
-    setCart((current) => current.filter((item) => item.cake.id !== cakeId));
+  function removeFromCart(cakeId: number, pieces: CakePieces) {
+    setCart((current) =>
+      current.filter((item) => item.cake.id !== cakeId || item.pieces !== pieces),
+    );
   }
 
   const cartTotal = useMemo(
-    () => cart.reduce((total, item) => total + item.cake.price * item.quantity, 0),
+    () => cart.reduce(
+      (total, item) => total + item.cake.price * (item.pieces / 8) * item.quantity,
+      0,
+    ),
     [cart],
   );
 

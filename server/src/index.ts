@@ -91,6 +91,7 @@ function getCakeImageExtension(file: Express.Multer.File): string | null {
 
 
 const VALID_BAKER_STATUSES = ['confirmed', 'in_progress', 'ready', 'picked_up'];
+const VALID_CAKE_PIECES = [8, 10, 12, 16, 20];
 
 // ---- Catalog ----
 
@@ -142,6 +143,7 @@ app.post('/api/orders', async (req, res) => {
   const normalizedItems = items.map((item: any) => ({
     cakeId: Number(item.cakeId),
     quantity: Number(item.quantity),
+    pieces: item.pieces === undefined ? 8 : Number(item.pieces),
   }));
 
   if (
@@ -149,7 +151,8 @@ app.post('/api/orders', async (req, res) => {
       item =>
         !Number.isInteger(item.cakeId) ||
         !Number.isInteger(item.quantity) ||
-        item.quantity <= 0
+        item.quantity <= 0 ||
+        !VALID_CAKE_PIECES.includes(item.pieces)
     )
   ) {
     return res.status(400).json({
@@ -158,7 +161,14 @@ app.post('/api/orders', async (req, res) => {
   }
 
   try {
-    const cakeIds = normalizedItems.map(item => item.cakeId);
+    const cakeIds = [...new Set(normalizedItems.map(item => item.cakeId))];
+    const itemKeys = normalizedItems.map(item => `${item.cakeId}:${item.pieces}`);
+
+    if (itemKeys.length !== new Set(itemKeys).size) {
+      return res.status(400).json({
+        error: 'Обединете еднаквите торти с еднакъв размер в общо количество.',
+      });
+    }
 
     const cakes = await prisma.cake.findMany({
       where: {
@@ -185,6 +195,7 @@ app.post('/api/orders', async (req, res) => {
           create: normalizedItems.map(item => ({
             cakeId: item.cakeId,
             quantity: item.quantity,
+            pieces: item.pieces,
           })),
         },
       },
@@ -818,7 +829,7 @@ app.get(
           const ingredient = recipeIngredient.ingredient;
 
           const required =
-            recipeIngredient.quantity * item.quantity;
+            recipeIngredient.quantity * (item.pieces / 8) * item.quantity;
 
           const existing = ingredientMap.get(ingredient.id);
 
@@ -923,7 +934,7 @@ app.patch(
 
           for (const recipeIngredient of recipe.ingredients) {
             const required =
-              recipeIngredient.quantity * item.quantity;
+              recipeIngredient.quantity * (item.pieces / 8) * item.quantity;
 
             const current =
               requiredIngredients.get(

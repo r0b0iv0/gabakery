@@ -190,6 +190,7 @@ export function OrderManagementPage() {
                                                     <span>
                                                         {item.cake.emoji}{' '}
                                                         {item.cake.name}
+                                                        {' '}· {item.pieces} парчета
                                                     </span>
 
                                                     <strong>

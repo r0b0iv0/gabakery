@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useCart } from '../contexts/CartContext';
 import './CartSummary.css';
+import { formatCurrency } from '../utils/formatCurrency';
 
 type Props = {
   onCheckout?: () => void;
@@ -22,7 +23,7 @@ export function CartSummary({ onCheckout }: Props) {
 
       <div className="cart-items">
         {cart.map((item) => (
-          <div className="cart-item" key={item.cake.id}>
+          <div className="cart-item" key={`${item.cake.id}-${item.pieces}`}>
             <div className="cart-item-info">
               <Link className="cart-item-name" to={`/cakes/${item.cake.id}`}>
                 {item.cake.imageUrl ? (
@@ -30,10 +31,10 @@ export function CartSummary({ onCheckout }: Props) {
                 ) : (
                   <span aria-hidden="true">{item.cake.emoji}</span>
                 )}
-                {item.cake.name}
+                {item.cake.name} · {item.pieces} парчета
               </Link>
               <div className="cart-item-price">
-                {item.cake.price.toFixed(2)} лв. / бр.
+                {formatCurrency(item.cake.price * item.pieces / 8)} / торта
               </div>
             </div>
 
@@ -43,7 +44,7 @@ export function CartSummary({ onCheckout }: Props) {
                   type="button"
                   className="quantity-button"
                   aria-label={`Намали количеството на ${item.cake.name}`}
-                  onClick={() => decreaseQuantity(item.cake.id)}
+                  onClick={() => decreaseQuantity(item.cake.id, item.pieces)}
                 >
                   −
                 </button>
@@ -52,7 +53,7 @@ export function CartSummary({ onCheckout }: Props) {
                   type="button"
                   className="quantity-button"
                   aria-label={`Увеличи количеството на ${item.cake.name}`}
-                  onClick={() => increaseQuantity(item.cake.id)}
+                  onClick={() => increaseQuantity(item.cake.id, item.pieces)}
                 >
                   +
                 </button>
@@ -61,7 +62,7 @@ export function CartSummary({ onCheckout }: Props) {
               <button
                 type="button"
                 className="remove-button"
-                onClick={() => removeFromCart(item.cake.id)}
+                onClick={() => removeFromCart(item.cake.id, item.pieces)}
               >
                 Премахни
               </button>
@@ -72,7 +73,7 @@ export function CartSummary({ onCheckout }: Props) {
 
       <div className="cart-total">
         <span>Общо</span>
-        <strong>{cartTotal.toFixed(2)} лв.</strong>
+        <strong>{formatCurrency(cartTotal)}</strong>
       </div>
 
       {onCheckout && (

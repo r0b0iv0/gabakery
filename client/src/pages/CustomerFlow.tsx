@@ -5,6 +5,7 @@ import { CakeCard } from '../components/CakeCard';
 import { CartSummary } from '../components/CartSummary';
 import { useCart } from '../contexts/CartContext';
 import type { Cake, Order } from '../types';
+import { formatCurrency } from '../utils/formatCurrency';
 import './CustomerFlow.css';
 
 type Step = 'select' | 'details' | 'success';
@@ -74,6 +75,7 @@ export function CustomerFlow() {
         items: cart.map(item => ({
           cakeId: item.cake.id,
           quantity: item.quantity,
+          pieces: item.pieces,
         })),
       });
 
@@ -147,20 +149,20 @@ export function CustomerFlow() {
 
           <div className="order-summary">
             {cart.map(item => (
-              <div className="summary-item" key={item.cake.id}>
+              <div className="summary-item" key={`${item.cake.id}-${item.pieces}`}>
                 <span>
-                  {item.cake.emoji} {item.cake.name} × {item.quantity}
+                  {item.cake.emoji} {item.cake.name} · {item.pieces} парчета × {item.quantity}
                 </span>
 
                 <strong>
-                  {(item.cake.price * item.quantity).toFixed(2)} лв.
+                  {formatCurrency(item.cake.price * item.pieces / 8 * item.quantity)}
                 </strong>
               </div>
             ))}
 
             <div className="summary-total">
               <span>Общо</span>
-              <strong>{cartTotal.toFixed(2)} лв.</strong>
+              <strong>{formatCurrency(cartTotal)}</strong>
             </div>
           </div>
 

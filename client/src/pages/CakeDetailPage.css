@@ -54,6 +54,7 @@
 
 .cake-detail-quantity { display: grid; gap: 8px; color: var(--brown); font-weight: 600; }
 .cake-detail-quantity .quantity-controls { gap: 10px; }
+.cake-detail-quantity select { min-height: 38px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 8px; background: white; color: var(--brown); font: inherit; }
 .cake-added-message { margin: 14px 0 0; color: #28743c; font-weight: 600; }
 
 @media (max-width: 720px) {

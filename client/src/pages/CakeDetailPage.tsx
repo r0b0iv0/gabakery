@@ -3,7 +3,8 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import { CartSummary } from '../components/CartSummary';
 import { useCart } from '../contexts/CartContext';
-import type { Cake } from '../types';
+import { CAKE_PIECES_OPTIONS, type Cake, type CakePieces } from '../types';
+import { formatCurrency } from '../utils/formatCurrency';
 import './CakeDetailPage.css';
 
 export function CakeDetailPage() {
@@ -12,6 +13,7 @@ export function CakeDetailPage() {
   const { addToCart } = useCart();
   const [cake, setCake] = useState<Cake | null>(null);
   const [quantity, setQuantity] = useState(1);
+  const [pieces, setPieces] = useState<CakePieces>(8);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [addedMessage, setAddedMessage] = useState('');
@@ -38,8 +40,8 @@ export function CakeDetailPage() {
   function handleAddToCart() {
     if (!cake) return;
 
-    addToCart(cake, quantity);
-    setAddedMessage(`Добавено в кошницата: ${quantity} бр.`);
+    addToCart(cake, quantity, pieces);
+    setAddedMessage(`Добавено в кошницата: ${quantity} торти по ${pieces} парчета.`);
   }
 
   if (loading) {
@@ -84,9 +86,21 @@ export function CakeDetailPage() {
           <p className="cake-detail-eyebrow">GaBakery</p>
           <h1>{cake.name}</h1>
           <p className="cake-detail-description">{cake.description}</p>
-          <p className="cake-detail-price">{cake.price.toFixed(2)} лв.</p>
+          <p className="cake-detail-price">{formatCurrency(cake.price * pieces / 8)}</p>
 
           <div className="cake-detail-order-controls">
+            <label className="cake-detail-quantity" htmlFor="cake-pieces">
+              <span>Размер</span>
+              <select
+                id="cake-pieces"
+                value={pieces}
+                onChange={(event) => setPieces(Number(event.target.value) as CakePieces)}
+              >
+                {CAKE_PIECES_OPTIONS.map((option) => (
+                  <option key={option} value={option}>{option} парчета</option>
+                ))}
+              </select>
+            </label>
             <div className="cake-detail-quantity">
               <span>Количество</span>
               <div className="quantity-controls">

@@ -33,8 +33,12 @@ export type OrderPayload = {
   items: {
     cakeId: number;
     quantity: number;
+    pieces: CakePieces;
   }[];
 };
+
+export type CakePieces = 8 | 10 | 12 | 16 | 20;
+export const CAKE_PIECES_OPTIONS: CakePieces[] = [8, 10, 12, 16, 20];
 
 export type Order = {
   id: number;
@@ -55,6 +59,7 @@ export type OrderItem = {
   orderId: number;
   cakeId: number;
   quantity: number;
+  pieces: CakePieces;
   completedQuantity: number;
   cake: Cake;
 };

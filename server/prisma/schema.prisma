@@ -40,12 +40,13 @@ model OrderItem {
   orderId           Int
   cakeId            Int
   quantity          Int
+  pieces            Int   @default(8)
   completedQuantity Int   @default(0)
 
   order    Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
   cake     Cake  @relation(fields: [cakeId], references: [id])
 
-  @@unique([orderId, cakeId])
+  @@unique([orderId, cakeId, pieces])
 }
 
 model User {
@@ -130,4 +131,3 @@ model PasswordResetToken {
 
   @@index([userId])
 }
-

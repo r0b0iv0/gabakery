@@ -244,7 +244,7 @@ export function BakerView() {
                 )}
 
                 <p className="recipe-batch-size">
-                  Количество в поръчката: {selectedRecipeItem.quantity} бр.
+                  Размер: {selectedRecipeItem.pieces} парчета · Поръчани торти: {selectedRecipeItem.quantity} бр.
                 </p>
 
                 <div className="recipe-ingredient-list">
@@ -252,10 +252,10 @@ export function BakerView() {
                     <div className="recipe-ingredient-row" key={item.id}>
                       <span>{item.ingredient.name}</span>
                       <span>
-                        {formatQuantity(item.quantity)} {item.ingredient.unit} / торта
+                        {formatQuantity(item.quantity * selectedRecipeItem.pieces / 8)} {item.ingredient.unit} / торта
                       </span>
                       <strong>
-                        {formatQuantity(item.quantity * selectedRecipeItem.quantity)}{' '}
+                        {formatQuantity(item.quantity * selectedRecipeItem.pieces / 8 * selectedRecipeItem.quantity)}{' '}
                         {item.ingredient.unit} общо
                       </strong>
                     </div>

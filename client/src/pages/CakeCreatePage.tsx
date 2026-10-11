@@ -230,6 +230,7 @@ export function CakeCreatePage() {
                         )}
 
                         <h2>Рецепта</h2>
+                        <p className="subtitle">Количествата на съставките са за торта от 8 парчета. За друг размер системата ги преизчислява пропорционално.</p>
 
                         <label className="field-label">Име на рецептата</label>
                         <input
