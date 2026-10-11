@@ -116,6 +116,38 @@ app.get('/api/cakes/:id', async (req, res) => {
   return res.json(cake);
 });
 
+app.get(
+  '/api/management/cakes/:id',
+  requireAuth,
+  requireRole("MANAGER", "ADMIN"),
+  async (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Невалидна торта.' });
+    }
+
+    const cake = await prisma.cake.findUnique({
+      where: { id },
+      include: {
+        recipe: {
+          include: {
+            ingredients: {
+              include: { ingredient: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!cake) {
+      return res.status(404).json({ error: 'Тортата не е намерена.' });
+    }
+
+    return res.json(cake);
+  },
+);
+
 
 // ---- Orders ----
 
@@ -481,6 +513,170 @@ app.post(
       });
     }
   }
+);
+
+app.patch(
+  '/api/cakes/:id',
+  requireAuth,
+  requireRole("MANAGER", "ADMIN"),
+  handleCakeImageUpload,
+  async (req, res) => {
+    const id = Number(req.params.id);
+
+    if (!Number.isInteger(id) || id <= 0) {
+      return res.status(400).json({ error: 'Невалидна торта.' });
+    }
+
+    let payload: any;
+
+    try {
+      payload = req.file
+        ? JSON.parse(req.body.payload ?? 'null')
+        : req.body ?? {};
+    } catch {
+      return res.status(400).json({ error: 'Невалидни данни за тортата.' });
+    }
+
+    const { name, description, price, emoji, recipe } = payload ?? {};
+    if (recipe?.description !== undefined && recipe.description !== null && typeof recipe.description !== 'string') {
+      return res.status(400).json({ error: 'Невалидно описание на рецептата.' });
+    }
+    const normalizedPrice = Number(price);
+    const recipeIngredients = Array.isArray(recipe?.ingredients)
+      ? recipe.ingredients.map((item: any) => ({
+          ingredientId: Number(item.ingredientId),
+          quantity: Number(item.quantity),
+        }))
+      : [];
+
+    if (
+      typeof name !== 'string' || !name.trim() ||
+      typeof description !== 'string' || !description.trim() ||
+      !Number.isFinite(normalizedPrice) || normalizedPrice < 0 ||
+      typeof recipe?.name !== 'string' || !recipe.name.trim() ||
+      recipeIngredients.length === 0 ||
+      recipeIngredients.some((item: { ingredientId: number; quantity: number }) =>
+        !Number.isInteger(item.ingredientId) || item.ingredientId <= 0 ||
+        !Number.isFinite(item.quantity) || item.quantity <= 0
+      )
+    ) {
+      return res.status(400).json({ error: 'Проверете задължителните полета и съставките.' });
+    }
+
+    const ingredientIds = recipeIngredients.map(
+      (item: { ingredientId: number }) => item.ingredientId,
+    );
+
+    if (new Set(ingredientIds).size !== ingredientIds.length) {
+      return res.status(400).json({ error: 'Една съставка може да бъде добавена само веднъж.' });
+    }
+
+    const imageExtension = req.file ? getCakeImageExtension(req.file) : null;
+
+    if (req.file && !imageExtension) {
+      return res.status(400).json({ error: 'Изберете валидна JPG, PNG или WebP снимка.' });
+    }
+
+    let savedImagePath: string | null = null;
+
+    try {
+      const [existingCake, ingredients] = await Promise.all([
+        prisma.cake.findUnique({
+          where: { id },
+          include: { recipe: true },
+        }),
+        prisma.ingredient.findMany({
+          where: { id: { in: ingredientIds } },
+          select: { id: true },
+        }),
+      ]);
+
+      if (!existingCake) {
+        return res.status(404).json({ error: 'Тортата не е намерена.' });
+      }
+
+      if (ingredients.length !== new Set(ingredientIds).size) {
+        return res.status(400).json({ error: 'Една или повече съставки не съществуват.' });
+      }
+
+      let newImageUrl: string | null = null;
+
+      if (req.file && imageExtension) {
+        const fileName = `${randomUUID()}.${imageExtension}`;
+        savedImagePath = path.join(UPLOAD_DIR, fileName);
+        newImageUrl = `/api/uploads/${fileName}`;
+        await writeFile(savedImagePath, req.file.buffer, { flag: 'wx' });
+      }
+
+      const updatedCake = await prisma.$transaction(async (tx) => {
+        const cake = await tx.cake.update({
+          where: { id },
+          data: {
+            name: name.trim(),
+            description: description.trim(),
+            price: normalizedPrice,
+            emoji: typeof emoji === 'string' && emoji ? emoji : '🎂',
+            ...(newImageUrl ? { imageUrl: newImageUrl } : {}),
+          },
+        });
+
+        if (existingCake.recipe) {
+          await tx.recipe.update({
+            where: { id: existingCake.recipe.id },
+            data: {
+              name: recipe.name.trim(),
+              description: recipe.description ?? null,
+              ingredients: {
+                deleteMany: {},
+                create: recipeIngredients,
+              },
+            },
+          });
+        } else {
+          await tx.recipe.create({
+            data: {
+              cakeId: id,
+              name: recipe.name.trim(),
+              description: recipe.description ?? null,
+              ingredients: { create: recipeIngredients },
+            },
+          });
+        }
+
+        return tx.cake.findUniqueOrThrow({
+          where: { id },
+          include: {
+            recipe: {
+              include: {
+                ingredients: {
+                  include: { ingredient: true },
+                },
+              },
+            },
+          },
+        });
+      });
+
+      if (newImageUrl && existingCake.imageUrl?.startsWith('/api/uploads/')) {
+        const previousFileName = existingCake.imageUrl.slice('/api/uploads/'.length);
+        if (previousFileName && path.basename(previousFileName) === previousFileName) {
+          await unlink(path.join(UPLOAD_DIR, previousFileName)).catch((error) => {
+            console.warn('Could not remove replaced cake image:', error);
+          });
+        }
+      }
+
+      return res.json(updatedCake);
+    } catch (error) {
+      console.error(error);
+
+      if (savedImagePath) {
+        await unlink(savedImagePath).catch(() => undefined);
+      }
+
+      return res.status(500).json({ error: 'Неуспешно обновяване на тортата.' });
+    }
+  },
 );
 
 app.get(

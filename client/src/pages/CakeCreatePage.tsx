@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { api } from '../api';
 import type { Ingredient } from '../types';
 import './CakeCreatePage.css';
@@ -14,6 +14,8 @@ type RecipeIngredient = {
 
 export function CakeCreatePage() {
     const navigate = useNavigate();
+    const { id } = useParams();
+    const isEditing = Boolean(id);
 
     const [step, setStep] = useState<Step>('create');
 
@@ -26,6 +28,7 @@ export function CakeCreatePage() {
     const [emoji, setEmoji] = useState('🎂');
     const [imageFile, setImageFile] = useState<File | null>(null);
     const [imagePreviewUrl, setImagePreviewUrl] = useState('');
+    const [existingImageUrl, setExistingImageUrl] = useState<string | null>(null);
 
     const [recipeName, setRecipeName] = useState('');
     const [recipeDescription, setRecipeDescription] = useState('');
@@ -37,11 +40,64 @@ export function CakeCreatePage() {
     const [error, setError] = useState('');
     const [saving, setSaving] = useState(false);
 
+    const [loadingCake, setLoadingCake] = useState(Boolean(id));
+    const [cakeLoadFailed, setCakeLoadFailed] = useState(false);
+
     useEffect(() => {
-        api.getIngredients()
-            .then(setIngredients)
-            .catch((err) => setError(err.message));
-    }, []);
+        let active = true;
+        setLoadingCake(Boolean(id));
+        setCakeLoadFailed(false);
+        setError('');
+
+        if (!id) {
+            setName('');
+            setDescription('');
+            setPrice('');
+            setEmoji('🎂');
+            setImageFile(null);
+            setExistingImageUrl(null);
+            setRecipeName('');
+            setRecipeDescription('');
+            setRecipeIngredients([]);
+            setStep('create');
+        }
+
+        async function loadFormData() {
+            try {
+                const [ingredientList, cake] = await Promise.all([
+                    api.getIngredients(),
+                    id ? api.getManagementCake(Number(id)) : Promise.resolve(null),
+                ]);
+
+                if (!active) return;
+                setIngredients(ingredientList);
+
+                if (id && cake) {
+                    setName(cake.name);
+                    setDescription(cake.description);
+                    setPrice(String(cake.price));
+                    setEmoji(cake.emoji);
+                    setExistingImageUrl(cake.imageUrl);
+                    setRecipeName(cake.recipe?.name ?? '');
+                    setRecipeDescription(cake.recipe?.description ?? '');
+                    setRecipeIngredients((cake.recipe?.ingredients ?? []).map((item) => ({
+                        ingredientId: item.ingredientId,
+                        quantity: String(item.quantity),
+                    })));
+                }
+            } catch (err) {
+                if (active) {
+                    setError(err instanceof Error ? err.message : 'Неуспешно зареждане на тортата.');
+                    setCakeLoadFailed(Boolean(id));
+                }
+            } finally {
+                if (active) setLoadingCake(false);
+            }
+        }
+
+        void loadFormData();
+        return () => { active = false; };
+    }, [id]);
 
     useEffect(() => {
         if (!imageFile) {
@@ -95,8 +151,13 @@ export function CakeCreatePage() {
         e.preventDefault();
         setError('');
 
-        if (!name || !description || !price || !recipeName) {
+        if (!name.trim() || !description.trim() || !price || !recipeName.trim()) {
             setError('Попълнете всички задължителни полета.');
+            return;
+        }
+
+        if (!Number.isFinite(Number(price)) || Number(price) < 0) {
+            setError('Въведете валидна цена.');
             return;
         }
 
@@ -105,10 +166,20 @@ export function CakeCreatePage() {
             return;
         }
 
+        if (recipeIngredients.some((item) => !Number.isFinite(Number(item.quantity)) || Number(item.quantity) <= 0)) {
+            setError('Въведете количество, по-голямо от 0, за всяка съставка.');
+            return;
+        }
+
+        if (new Set(recipeIngredients.map((item) => item.ingredientId)).size !== recipeIngredients.length) {
+            setError('Всяка съставка може да бъде добавена само веднъж.');
+            return;
+        }
+
         try {
             setSaving(true);
 
-            await api.createCake({
+            const payload = {
                 name,
                 description,
                 price: Number(price),
@@ -121,7 +192,13 @@ export function CakeCreatePage() {
                         quantity: Number(item.quantity),
                     })),
                 },
-            }, imageFile);
+            };
+
+            if (isEditing && id) {
+                await api.updateCake(Number(id), payload, imageFile);
+            } else {
+                await api.createCake(payload, imageFile);
+            }
 
             setStep("success")
         } catch (err) {
@@ -138,6 +215,7 @@ export function CakeCreatePage() {
         setDescription('');
         setEmoji('🎂');
         setImageFile(null);
+        setExistingImageUrl(null);
         setPrice('');
         setRecipeName('');
         setRecipeDescription('');
@@ -150,14 +228,22 @@ export function CakeCreatePage() {
 
             {step === "create" && (
                 <>
-                    <h1>Създаване на торта</h1>
+                    <h1>{isEditing ? 'Редактиране на торта' : 'Създаване на торта'}</h1>
                     <p className="subtitle">
-                        Добавете нова торта и нейната рецепта.
+                        {isEditing ? 'Променете данните, снимката или рецептата на тортата.' : 'Добавете нова торта и нейната рецепта.'}
                     </p>
 
                     {error && <div className="error-banner">{error}</div>}
 
-                    <form onSubmit={handleSubmit}>
+                    {loadingCake && <p>Зареждане на тортата...</p>}
+
+                    {cakeLoadFailed && (
+                        <button type="button" className="secondary" onClick={() => navigate('/order')}>
+                            Към тортите
+                        </button>
+                    )}
+
+                    {!loadingCake && !cakeLoadFailed && <form onSubmit={handleSubmit}>
                         <label className="field-label">Име на тортата</label>
                         <input
                             value={name}
@@ -172,7 +258,7 @@ export function CakeCreatePage() {
                             placeholder="Описание на тортата"
                         />
 
-                        <label className="field-label">Цена</label>
+                        <label className="field-label">Цена (€)</label>
                         <input
                             type="number"
                             min="0"
@@ -189,7 +275,7 @@ export function CakeCreatePage() {
                         />
 
                         <label className="field-label" htmlFor="cakeImage">
-                            Снимка на тортата (по желание)
+                            {isEditing ? 'Нова снимка (по желание)' : 'Снимка на тортата (по желание)'}
                         </label>
                         <input
                             id="cakeImage"
@@ -221,12 +307,17 @@ export function CakeCreatePage() {
                                 setImageFile(file);
                             }}
                         />
-                        {imagePreviewUrl && (
+                        {(imagePreviewUrl || existingImageUrl) && (
                             <img
                                 className="cake-image-preview"
-                                src={imagePreviewUrl}
-                                alt="Преглед на снимката на тортата"
+                                src={imagePreviewUrl || existingImageUrl || undefined}
+                                alt={imagePreviewUrl ? 'Преглед на новата снимка' : 'Текуща снимка на тортата'}
                             />
+                        )}
+                        {imageFile && existingImageUrl && (
+                            <button type="button" className="secondary" onClick={() => setImageFile(null)}>
+                                Запази текущата снимка
+                            </button>
                         )}
 
                         <h2>Рецепта</h2>
@@ -319,29 +410,31 @@ export function CakeCreatePage() {
                                 className="primary"
                                 disabled={saving}
                             >
-                                {saving ? 'Запазване...' : 'Създай торта'}
+                                {saving ? 'Запазване...' : isEditing ? 'Запази промените' : 'Създай торта'}
                             </button>
 
                             <button
                                 type="button"
                                 className="secondary"
-                                onClick={() => navigate('/baker')}
+                                onClick={() => navigate(isEditing && id ? `/cakes/${id}` : '/baker')}
                             >
                                 Отказ
                             </button>
                         </div>
-                    </form>
+                    </form>}
                 </>
             )}
 
             {step === 'success' && (
                 <div className="success">
                     <div className="success-emoji">✅</div>
-                    <h1>Успешно създадена торта!</h1>
-                    <p>
-                        Можеш да откриеш своята торта на страницата <strong> Поръчай торта</strong>
-                    </p>
-                    <button className="primary" onClick={startOver}>Нова торта</button>
+                    <h1>{isEditing ? 'Промените са запазени!' : 'Успешно създадена торта!'}</h1>
+                    <p>{isEditing ? 'Тортата и рецептата са обновени.' : <>Можеш да откриеш своята торта на страницата <strong>Поръчай торта</strong>.</>}</p>
+                    {isEditing ? (
+                        <button className="primary" onClick={() => navigate('/order')}>Към тортите</button>
+                    ) : (
+                        <button className="primary" onClick={startOver}>Нова торта</button>
+                    )}
                 </div>
             )}
         </div>

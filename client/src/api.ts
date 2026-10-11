@@ -71,6 +71,7 @@ export const api = {
 
   getCakes: () => request<Cake[]>('/cakes'),
   getCake: (id: number) => request<Cake>(`/cakes/${id}`),
+  getManagementCake: (id: number) => request<Cake>(`/management/cakes/${id}`),
   createOrder: (payload: OrderPayload) =>
     request<Order>('/orders', { method: 'POST', body: JSON.stringify(payload) }),
 
@@ -104,6 +105,23 @@ export const api = {
 
     return request<Cake>('/cakes', {
       method: 'POST',
+      body: JSON.stringify(payload),
+    });
+  },
+  updateCake: (id: number, payload: CreateCakePayload, image?: File | null) => {
+    if (image) {
+      const formData = new FormData();
+      formData.append('payload', JSON.stringify(payload));
+      formData.append('image', image);
+
+      return request<Cake>(`/cakes/${id}`, {
+        method: 'PATCH',
+        body: formData,
+      });
+    }
+
+    return request<Cake>(`/cakes/${id}`, {
+      method: 'PATCH',
       body: JSON.stringify(payload),
     });
   },

@@ -5,12 +5,16 @@ import { CartSummary } from '../components/CartSummary';
 import { useCart } from '../contexts/CartContext';
 import { CAKE_PIECES_OPTIONS, type Cake, type CakePieces } from '../types';
 import { formatCurrency } from '../utils/formatCurrency';
+import { useAuth } from '../auth/AuthContext';
+import { canAccessManagerView } from '../auth/permissions';
 import './CakeDetailPage.css';
 
 export function CakeDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { addToCart } = useCart();
+  const { user } = useAuth();
+  const canEditCake = canAccessManagerView(user);
   const [cake, setCake] = useState<Cake | null>(null);
   const [quantity, setQuantity] = useState(1);
   const [pieces, setPieces] = useState<CakePieces>(8);
@@ -72,6 +76,15 @@ export function CakeDetailPage() {
       >
         ← Обратно към тортите
       </button>
+      {canEditCake && cake && (
+        <button
+          type="button"
+          className="secondary"
+          onClick={() => navigate(`/cakes/${cake.id}/edit`)}
+        >
+          Редактирай тортата
+        </button>
+      )}
 
       <section className="cake-detail-card">
         {cake.imageUrl ? (

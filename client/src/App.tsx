@@ -34,6 +34,7 @@ export default function App() {
               }
             >
               <Route path="/cakes/new" element={<CakeCreatePage />} />
+              <Route path="/cakes/:id/edit" element={<CakeCreatePage />} />
               <Route path="/ingredients" element={<IngredientsPage />} />
               <Route path="/orders/manage" element={<OrderManagementPage />} />
             </Route>
