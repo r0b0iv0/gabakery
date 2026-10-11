@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { prisma } from './db';
 import cookieParser from "cookie-parser";
-import { requireAuth } from './middleware/requireAuth';
+import { optionalAuth, requireAuth } from './middleware/requireAuth';
 import { requireRole } from './middleware/requireRole';
 import authRouter from "./auth/auth.routes"
 import multer from 'multer';
@@ -151,7 +151,7 @@ app.get(
 
 // ---- Orders ----
 
-app.post('/api/orders', async (req, res) => {
+app.post('/api/orders', optionalAuth, async (req, res) => {
   const {
     customerName,
     phone,
@@ -222,6 +222,7 @@ app.post('/api/orders', async (req, res) => {
         phone,
         notes: notes ?? null,
         pickupDate: new Date(pickupDate),
+        ...(req.user ? { customerUserId: req.user.id } : {}),
 
         items: {
           create: normalizedItems.map(item => ({
@@ -249,6 +250,24 @@ app.post('/api/orders', async (req, res) => {
     });
   }
 });
+
+app.get(
+  '/api/my/orders',
+  requireAuth,
+  async (req, res) => {
+    const orders = await prisma.order.findMany({
+      where: { customerUserId: req.user!.id },
+      include: {
+        items: {
+          include: { cake: true },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return res.json(orders);
+  },
+);
 
 app.get('/api/orders', requireAuth, requireRole("STAFF", "MANAGER", "ADMIN"), async (req, res) => {
   const dateParam = typeof req.query.date === 'string' ? req.query.date : undefined;

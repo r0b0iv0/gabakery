@@ -74,6 +74,7 @@ export const api = {
   getManagementCake: (id: number) => request<Cake>(`/management/cakes/${id}`),
   createOrder: (payload: OrderPayload) =>
     request<Order>('/orders', { method: 'POST', body: JSON.stringify(payload) }),
+  getMyOrders: () => request<Order[]>('/my/orders'),
 
 
   getOrdersByDate: (date: string) => request<Order[]>(`/orders?date=${date}`),

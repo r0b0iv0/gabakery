@@ -13,6 +13,7 @@ import { OrderManagementPage } from './pages/OrdermanagementPage';
 import { ForgotPasswordPage } from './pages/ForgotPasswordPage';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { CakeDetailPage } from './pages/CakeDetailPage';
+import { OrderHistoryPage } from './pages/OrderHistoryPage';
 import { CartProvider } from './contexts/CartContext';
 
 export default function App() {
@@ -27,6 +28,9 @@ export default function App() {
             <Route path="/cakes/:id" element={<CakeDetailPage />} />
             <Route element={<ProtectedRoute allowedRoles={['STAFF', 'MANAGER', 'ADMIN']} />}>
               <Route path="/baker" element={<BakerView />} />
+            </Route>
+            <Route element={<ProtectedRoute allowedRoles={['USER', 'STAFF', 'MANAGER', 'ADMIN']} />}>
+              <Route path="/my-orders" element={<OrderHistoryPage />} />
             </Route>
             <Route
               element={

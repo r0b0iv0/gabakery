@@ -147,6 +147,9 @@ export function Nav() {
               id="account-menu"
               hidden={openMenu !== 'account'}
             >
+              <NavLink to="/my-orders" onClick={closeMenus}>
+                Моите поръчки
+              </NavLink>
               <button
                 type="button"
                 className="nav-dropdown-action"

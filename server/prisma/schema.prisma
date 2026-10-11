@@ -33,6 +33,11 @@ model Order {
 
   createdById  Int?
   createdBy    User?    @relation("OrderCreatedBy", fields: [createdById], references: [id])
+
+  customerUserId Int?
+  customerUser   User?   @relation("CustomerOrders", fields: [customerUserId], references: [id], onDelete: SetNull)
+
+  @@index([customerUserId])
 }
 
 model OrderItem {
@@ -58,6 +63,7 @@ model User {
   createdAt    DateTime  @default(now())
   sessions     Session[]
   orders       Order[]   @relation("OrderCreatedBy")
+  customerOrders Order[] @relation("CustomerOrders")
 
   passwordResetTokens PasswordResetToken[]
 }

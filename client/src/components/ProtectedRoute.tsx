@@ -6,7 +6,11 @@ type ProtectedRouteProps = {
 };
 
 export function ProtectedRoute({ allowedRoles }: ProtectedRouteProps) {
-    const { user } = useAuth();
+    const { user, loading } = useAuth();
+
+    if (loading) {
+        return <div className="page"><p>Зареждане...</p></div>;
+    }
 
     if (!user || !allowedRoles.includes(user.role)) {
         return <Navigate to="/" replace />;

@@ -45,3 +45,35 @@ export async function requireAuth(
 
     next();
 }
+
+export async function optionalAuth(
+    req: Request,
+    _res: Response,
+    next: NextFunction
+) {
+    const sessionId = req.cookies.session;
+
+    if (!sessionId) {
+        return next();
+    }
+
+    try {
+        const session = await prisma.session.findUnique({
+            where: { id: sessionId },
+            include: { user: true },
+        });
+
+        if (session && session.expiresAt >= new Date() && isRole(session.user.role)) {
+            req.user = {
+                id: session.user.id,
+                email: session.user.email,
+                name: session.user.name,
+                role: session.user.role,
+            };
+        }
+
+        return next();
+    } catch (error) {
+        return next(error);
+    }
+}
