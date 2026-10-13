@@ -11,6 +11,7 @@ import { mkdirSync } from 'fs';
 import { unlink, writeFile } from 'fs/promises';
 import path from 'path';
 import type { NextFunction, Request, Response } from 'express';
+import { parseIngredientImport, type IngredientImportRow } from './ingredients/ingredientImport';
 
 const app = express();
 app.use(cookieParser());
@@ -39,6 +40,76 @@ const cakeImageUpload = multer({
     fileSize: MAX_CAKE_IMAGE_SIZE,
   },
 });
+
+const ingredientImportUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    files: 1,
+    fileSize: 2 * 1024 * 1024,
+  },
+});
+
+type IngredientImportPreviewRow = {
+  rowNumber: number;
+  name: string;
+  unit: string;
+  quantity: number | null;
+  action: 'create' | 'add' | 'error';
+  error?: string;
+};
+
+function assessIngredientImport(
+  rows: IngredientImportRow[],
+  existingIngredients: Array<{ id: number; name: string; unit: string }>,
+): IngredientImportPreviewRow[] {
+  const seenNames = new Set<string>();
+
+  return rows.map((row) => {
+    const name = row.name.trim();
+    const unit = row.unit.trim();
+    const normalizedName = name.toLocaleLowerCase('bg-BG');
+    const quantityText = row.rawQuantity.trim().replace(',', '.');
+    const quantity = quantityText ? Number(quantityText) : Number.NaN;
+    const matches = existingIngredients.filter(
+      (ingredient) => ingredient.name.trim().toLocaleLowerCase('bg-BG') === normalizedName,
+    );
+    let error: string | undefined;
+
+    if (!name) error = 'Липсва име на съставката.';
+    else if (name.length > 120) error = 'Името е прекалено дълго (максимум 120 символа).';
+    else if (!unit) error = 'Липсва мерна единица.';
+    else if (unit.length > 30) error = 'Мерната единица е прекалено дълга (максимум 30 символа).';
+    else if (!quantityText || !Number.isFinite(quantity) || quantity <= 0) error = 'Количеството трябва да е число, по-голямо от 0.';
+    else if (seenNames.has(normalizedName)) error = 'Съставката се среща повече от веднъж във файла.';
+    else if (matches.length > 1) error = 'В системата има повече от една съставка с това име.';
+    else if (matches.length === 1 && matches[0].unit.trim().toLocaleLowerCase('bg-BG') !== unit.toLocaleLowerCase('bg-BG')) {
+      error = `Мерната единица не съвпада със съществуващата (${matches[0].unit}).`;
+    }
+
+    if (normalizedName) seenNames.add(normalizedName);
+
+    return {
+      rowNumber: row.rowNumber,
+      name,
+      unit,
+      quantity: Number.isFinite(quantity) ? quantity : null,
+      action: error ? 'error' : matches.length === 1 ? 'add' : 'create',
+      ...(error && { error }),
+    };
+  });
+}
+
+function handleIngredientImportUpload(req: Request, res: Response, next: NextFunction) {
+  ingredientImportUpload.single('file')(req, res, (error) => {
+    if (!error) return next();
+
+    if (error instanceof multer.MulterError && error.code === 'LIMIT_FILE_SIZE') {
+      return res.status(413).json({ error: 'Файлът трябва да е до 2 MB.' });
+    }
+
+    return res.status(400).json({ error: 'Неуспешно качване на файла.' });
+  });
+}
 
 function handleCakeImageUpload(req: Request, res: Response, next: NextFunction) {
   cakeImageUpload.single('image')(req, res, (error) => {
@@ -712,6 +783,98 @@ app.get(
 
     res.json(ingredients);
   }
+);
+
+app.post(
+  '/api/ingredients/import/preview',
+  requireAuth,
+  requireRole("MANAGER", "ADMIN"),
+  handleIngredientImportUpload,
+  async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Изберете файл за импорт.' });
+
+    try {
+      const rows = await parseIngredientImport(req.file.buffer, req.file.originalname);
+      const existing = await prisma.ingredient.findMany({ select: { id: true, name: true, unit: true } });
+      const previewRows = assessIngredientImport(rows, existing);
+      return res.json({ rows: previewRows, canImport: previewRows.every((row) => row.action !== 'error') });
+    } catch (error) {
+      return res.status(400).json({
+        error: error instanceof Error ? error.message : 'Файлът не може да бъде прочетен.',
+      });
+    }
+  },
+);
+
+app.post(
+  '/api/ingredients/import',
+  requireAuth,
+  requireRole("MANAGER", "ADMIN"),
+  handleIngredientImportUpload,
+  async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: 'Изберете файл за импорт.' });
+
+    let rows: IngredientImportRow[];
+    try {
+      rows = await parseIngredientImport(req.file.buffer, req.file.originalname);
+    } catch (error) {
+      return res.status(400).json({
+        error: error instanceof Error ? error.message : 'Файлът не може да бъде прочетен.',
+      });
+    }
+
+    try {
+      const result = await prisma.$transaction(async (tx) => {
+        const existing = await tx.ingredient.findMany({ select: { id: true, name: true, unit: true } });
+        const previewRows = assessIngredientImport(rows, existing);
+        if (previewRows.some((row) => row.action === 'error')) {
+          return { invalidRows: previewRows.filter((row) => row.action === 'error') };
+        }
+
+        for (const row of previewRows) {
+          if (row.quantity === null) continue;
+          if (row.action === 'create') {
+            await tx.ingredient.create({
+              data: {
+                name: row.name,
+                unit: row.unit,
+                inventory: { create: { quantity: row.quantity, lowStockThreshold: 0 } },
+              },
+            });
+          } else {
+            const ingredient = existing.find(
+              (item) => item.name.trim().toLocaleLowerCase('bg-BG') === row.name.toLocaleLowerCase('bg-BG'),
+            );
+            if (!ingredient) throw new Error('Съставката не беше намерена при записването на импорта.');
+            await tx.inventory.upsert({
+              where: { ingredientId: ingredient.id },
+              update: { quantity: { increment: row.quantity } },
+              create: { ingredientId: ingredient.id, quantity: row.quantity, lowStockThreshold: 0 },
+            });
+          }
+        }
+
+        return {
+          created: previewRows.filter((row) => row.action === 'create').length,
+          updated: previewRows.filter((row) => row.action === 'add').length,
+        };
+      });
+
+      if ('invalidRows' in result) {
+        return res.status(409).json({
+          error: 'Наличностите са променени след прегледа. Поправете редовете и опитайте отново.',
+          rows: result.invalidRows,
+        });
+      }
+
+      return res.json(result);
+    } catch (error) {
+      console.error('Ingredient import failed:', error);
+      return res.status(500).json({
+        error: 'Импортът не беше записан поради грешка в базата данни.',
+      });
+    }
+  },
 );
 
 app.post(

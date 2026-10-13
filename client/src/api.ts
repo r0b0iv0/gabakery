@@ -1,4 +1,4 @@
-import type { Cake, CreateCakePayload, CreateIngredientPayload, Ingredient, Order, OrderAvailability, OrderPayload, User } from './types';
+import type { Cake, CreateCakePayload, CreateIngredientPayload, Ingredient, IngredientImportPreview, Order, OrderAvailability, OrderPayload, User } from './types';
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
   const headers = new Headers(options?.headers);
@@ -91,6 +91,22 @@ export const api = {
     }),
   getIngredients: () =>
     request<Ingredient[]>('/ingredients'),
+  previewIngredientImport: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<IngredientImportPreview>('/ingredients/import/preview', {
+      method: 'POST',
+      body: formData,
+    });
+  },
+  importIngredients: (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<{ created: number; updated: number }>('/ingredients/import', {
+      method: 'POST',
+      body: formData,
+    });
+  },
 
   createCake: (payload: CreateCakePayload, image?: File | null) => {
     if (image) {

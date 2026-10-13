@@ -1,16 +1,22 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import type { Ingredient } from '../types';
+import type { Ingredient, IngredientImportPreview } from '../types';
 import './IngredientsPage.css';
 
 export function IngredientsPage() {
     const [ingredients, setIngredients] = useState<Ingredient[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [success, setSuccess] = useState('');
 
     const [showLowStock, setShowLowStock] = useState(false);
     const [showAddIngredient, setShowAddIngredient] = useState(false);
     const [showStockAdjustment, setShowStockAdjustment] = useState(false);
+    const [showImport, setShowImport] = useState(false);
+    const [importFile, setImportFile] = useState<File | null>(null);
+    const [importPreview, setImportPreview] = useState<IngredientImportPreview | null>(null);
+    const [previewingImport, setPreviewingImport] = useState(false);
+    const [importing, setImporting] = useState(false);
 
     const [selectedIngredient, setSelectedIngredient] =
         useState<Ingredient | null>(null);
@@ -31,6 +37,7 @@ export function IngredientsPage() {
     async function loadIngredients() {
         try {
             setError('');
+            setSuccess('');
             const data = await api.getIngredients();
             setIngredients(data);
         } catch (err) {
@@ -125,6 +132,51 @@ export function IngredientsPage() {
         }
     }
 
+    function downloadIngredientTemplate() {
+        const csv = '\uFEFFIngredient name;Unit;Quantity received\r\n';
+        const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'ingredients-import-template.csv';
+        link.click();
+        URL.revokeObjectURL(url);
+    }
+
+    async function handleImportFileChange(file: File | null) {
+        setImportFile(file);
+        setImportPreview(null);
+        setError('');
+        if (!file) return;
+
+        try {
+            setPreviewingImport(true);
+            setImportPreview(await api.previewIngredientImport(file));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Файлът не може да бъде прегледан.');
+        } finally {
+            setPreviewingImport(false);
+        }
+    }
+
+    async function handleIngredientImport() {
+        if (!importFile || !importPreview?.canImport) return;
+
+        try {
+            setImporting(true);
+            setError('');
+            const result = await api.importIngredients(importFile);
+            setShowImport(false);
+            setImportFile(null);
+            setImportPreview(null);
+            await loadIngredients();
+            setSuccess(`Импортът е завършен: създадени ${result.created}, обновени ${result.updated}.`);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Импортът не беше записан.');
+        } finally {
+            setImporting(false);
+        }
+    }
+
     const lowStockCount = ingredients.filter(ingredient => {
         const quantity = ingredient.inventory?.quantity ?? 0;
         const threshold =
@@ -161,21 +213,104 @@ export function IngredientsPage() {
                     </p>
                 </div>
 
-                <button
-                    type="button"
-                    className="primary"
-                    onClick={() => {
-                        setError('');
-                        setShowAddIngredient(true);
-                    }}
-                >
-                    + Нова съставка
-                </button>
+                <div className="ingredients-header-actions">
+                    <button type="button" className="secondary" onClick={downloadIngredientTemplate}>
+                        Изтегли шаблон
+                    </button>
+                    <button
+                        type="button"
+                        className="secondary"
+                        onClick={() => {
+                            setError('');
+                            setShowImport(true);
+                        }}
+                    >
+                        Импорт от файл
+                    </button>
+                    <button
+                        type="button"
+                        className="primary"
+                        onClick={() => {
+                            setError('');
+                            setShowAddIngredient(true);
+                        }}
+                    >
+                        + Нова съставка
+                    </button>
+                </div>
             </div>
 
-            {error && (
+            {error && !showImport && (
                 <div className="error-banner">
                     {error}
+                </div>
+            )}
+            {success && <div className="success-banner">{success}</div>}
+
+            {showImport && (
+                <div className="modal-overlay">
+                    <div className="modal ingredient-import-modal">
+                        <h2>Импорт на съставки</h2>
+                        <p>Изберете попълнен шаблон във формат .xlsx или .csv. Количествата ще се добавят към наличността.</p>
+                        {error && <div className="error-banner">{error}</div>}
+                        <label className="field-label" htmlFor="ingredientImportFile">Файл</label>
+                        <input
+                            id="ingredientImportFile"
+                            type="file"
+                            accept=".xlsx,.csv"
+                            onChange={(event) => void handleImportFileChange(event.target.files?.[0] ?? null)}
+                        />
+
+                        {previewingImport && <p>Проверка на файла...</p>}
+                        {importPreview && (
+                            <>
+                                <div className="import-summary">
+                                    {importPreview.rows.filter((row) => row.action === 'create').length} нови ·{' '}
+                                    {importPreview.rows.filter((row) => row.action === 'add').length} наличности за добавяне ·{' '}
+                                    {importPreview.rows.filter((row) => row.action === 'error').length} грешки
+                                </div>
+                                <div className="import-preview-table-wrapper">
+                                    <table className="import-preview-table">
+                                        <thead>
+                                            <tr><th>Ред</th><th>Съставка</th><th>Единица</th><th>Количество</th><th>Резултат</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            {importPreview.rows.map((row) => (
+                                                <tr key={row.rowNumber} className={row.action === 'error' ? 'import-row-error' : undefined}>
+                                                    <td>{row.rowNumber}</td>
+                                                    <td>{row.name || '—'}</td>
+                                                    <td>{row.unit || '—'}</td>
+                                                    <td>{row.quantity ?? '—'}</td>
+                                                    <td>{row.error ?? (row.action === 'create' ? 'Ще се създаде' : `Ще се добави (${row.unit})`)}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {!importPreview.canImport && <p className="stock-adjustment-error">Поправете грешките във файла и го изберете отново.</p>}
+                            </>
+                        )}
+
+                        <div className="actions">
+                            <button
+                                type="button"
+                                className="secondary"
+                                disabled={importing}
+                                onClick={() => {
+                                    setShowImport(false);
+                                    setImportFile(null);
+                                    setImportPreview(null);
+                                    setError('');
+                                }}
+                            >Отказ</button>
+                            <button
+                                type="button"
+                                className="primary"
+                                disabled={!importFile || !importPreview?.canImport || previewingImport || importing}
+                                onClick={() => void handleIngredientImport()}
+                            >{importing ? 'Импортиране...' : 'Импортирай'}</button>
+                        </div>
+                    </div>
                 </div>
             )}
 

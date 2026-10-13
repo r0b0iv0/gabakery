@@ -102,6 +102,20 @@ export type Ingredient = {
   };
 };
 
+export type IngredientImportPreviewRow = {
+  rowNumber: number;
+  name: string;
+  unit: string;
+  quantity: number | null;
+  action: 'create' | 'add' | 'error';
+  error?: string;
+};
+
+export type IngredientImportPreview = {
+  rows: IngredientImportPreviewRow[];
+  canImport: boolean;
+};
+
 export type CreateIngredientPayload = {
   name: string;
   unit: string;

@@ -6,6 +6,26 @@
 
 .ingredients-header {
   margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.ingredients-header-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.success-banner {
+  background: #e8f6e8;
+  color: #39733a;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 16px;
 }
 
 .ingredients-header h1 {
@@ -162,6 +182,55 @@
   color: var(--brown);
 }
 
+.ingredient-import-modal {
+  max-width: 900px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+}
+
+.ingredient-import-modal > p {
+  color: #8a6a55;
+  margin: -8px 0 18px;
+}
+
+.import-summary {
+  margin: 18px 0 10px;
+  color: var(--brown);
+  font-weight: 600;
+}
+
+.import-preview-table-wrapper {
+  max-height: 340px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+}
+
+.import-preview-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.import-preview-table th,
+.import-preview-table td {
+  padding: 9px 11px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+
+.import-preview-table th {
+  position: sticky;
+  top: 0;
+  background: #fff8f0;
+  color: var(--brown);
+}
+
+.import-preview-table .import-row-error td {
+  background: #fff1f1;
+  color: #a33;
+}
+
 .modal-actions {
   display: flex;
   justify-content: flex-end;
@@ -232,6 +301,18 @@
 }
 
 @media (max-width: 700px) {
+  .ingredients-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .ingredients-header-actions {
+    justify-content: flex-start;
+  }
+
+  .ingredients-header-actions button {
+    flex: 1 1 auto;
+  }
   .ingredients-summary {
     grid-template-columns: 1fr;
   }
@@ -247,6 +328,10 @@
 
   .ingredients-table {
     min-width: 700px;
+  }
+
+  .import-preview-table {
+    min-width: 650px;
   }
 
   .modal {
