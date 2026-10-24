@@ -1,8 +1,10 @@
+import 'dotenv/config';
 import { Router } from "express"
 import crypto from "node:crypto";
 import argon2 from "argon2";
 import { prisma } from "../db";
 import { requireAuth } from "../middleware/requireAuth";
+import { sendResetPasswordEmail } from './emailSender';
 
 const router = Router();
 
@@ -142,6 +144,7 @@ router.post('/forgot-password', async (req, res) => {
         });
     }
 
+    let resetToken: string | null = null;
     try {
         const user = await prisma.user.findUnique({
             where: {
@@ -163,6 +166,7 @@ router.post('/forgot-password', async (req, res) => {
         });
 
         const token = crypto.randomBytes(32).toString('hex');
+        resetToken = token;
 
         await prisma.passwordResetToken.create({
             data: {
@@ -172,17 +176,19 @@ router.post('/forgot-password', async (req, res) => {
             },
         });
 
-        const resetUrl =
-            `http://localhost:5173/reset-password?token=${token}`;
-
-        console.log('Password reset URL:', resetUrl);
+        const resetUrl = new URL('/reset-password', process.env.APP_BASE_URL || 'http://localhost:5173');
+        resetUrl.searchParams.set('token', token);
+        await sendResetPasswordEmail(user.email, resetUrl.toString());
 
         res.json({
             message:
                 'Ако съществува акаунт с този имейл, ще бъде изпратен линк за възстановяване.',
         });
     } catch (error) {
-        console.error(error);
+        if (resetToken) {
+            await prisma.passwordResetToken.deleteMany({ where: { token: resetToken } }).catch(() => undefined);
+        }
+        console.error('Password-reset email flow failed:', error);
 
         res.status(500).json({
             error: 'Възникна грешка.',

@@ -317,16 +317,16 @@ export function IngredientsPage() {
             <div className="ingredients-summary">
                 <div className="summary-card">
                     <span className="summary-label">
-                        Всички съставки
+                        Всички съставки:
                     </span>
-                    <strong>{ingredients.length}</strong>
+                    <strong> {ingredients.length}</strong>
                 </div>
 
                 <div className="summary-card low-stock-summary">
                     <span className="summary-label">
-                        Ниска наличност
+                        Ниска наличност:
                     </span>
-                    <strong>{lowStockCount}</strong>
+                    <strong> {lowStockCount}</strong>
                 </div>
             </div>
 
