@@ -1,7 +1,7 @@
-# GaBakery — Prototype
+# GaBakery
 
-Small end-to-end prototype: customers order a premade or custom cake for a
-pickup date; bakers see everything due on a given day.
+Small end-to-end web app: customers order a premade cake for a
+pickup date; bakers see everything due on a given day; managers confirm and take care of the orders and ingredients.
 
 ## Stack
 - **Client:** React + TypeScript + Vite
@@ -35,34 +35,3 @@ Vite proxies `/api/*` to `http://localhost:4000`, so just open
   submit.
 - `/baker` — pick a date (defaults to today) and see every order due then,
   with a status dropdown (pending → in_progress → ready → picked_up).
-
-## What's here vs. deliberately skipped
-
-- No auth — you said skip it for now. Both routes are open.
-- Custom cake toppings/flavors are a hardcoded list served from
-  `GET /api/options` rather than DB tables, since they're not the thing
-  you're validating yet.
-- No email/SMS confirmation — order just gets an ID.
-- No payment.
-
-## What I'd extend first
-
-1. **Separate baker app** — you flagged this yourself. Once the flow feels
-   right, split `/baker` into its own Vite app (or just its own deployed
-   build of the same client) with a simple PIN/login, since kitchen staff
-   and customers have very different needs (kitchen wants a big-print,
-   glanceable queue; customers want a nice ordering flow).
-2. **Capacity limits** — right now the bakery can accept infinite orders for
-   the same day. Next real feature: cap total kg or number of cakes per day
-   and grey out full dates in the date picker.
-3. **Move flavors/toppings into the DB** — once you're happy with the set,
-   turn `OPTIONS` in `server/src/index.ts` into actual `Flavor`/`Topping`
-   tables so non-devs can manage them (and so premade cakes can eventually
-   be *built from* the same ingredient list).
-4. **Order editing/cancellation** — currently one-way; customers can't
-   change or cancel once submitted.
-5. **Swap SQLite → Postgres** — only `datasource` in `schema.prisma` and
-   `DATABASE_URL` change; Prisma does the rest. Worth doing once you deploy
-   somewhere with concurrent writers.
-6. **Notifications** — SMS/email when status flips to `ready`, since that's
-   the main promise of this whole system to the customer.
